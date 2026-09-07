@@ -1,27 +1,22 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   IdCard,
   Users2,
   Hash,
   BookOpen,
-  ArrowUpRight,
   TrendingUp,
   Loader2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
   getProjectByGroupCode,
-  getProjectMembers,
-  getStudentRequirements,
-  getStudentOverallProgress,
+  getProjectMemberCount,
+  getGroupDeliverables,
+  getGroupSubmissionProgress,
 } from "../services/projectService";
 import ProgressCard from "../components/ProgressCard";
-import RequirementTracker from "../components/RequirementTracker";
 import CourseDeliverables from "../components/CourseDeliverables";
-import StatusPill from "../components/StatusPill";
 
-// A small, reusable "fact" tile for the student info card
 function InfoTile({ icon: Icon, label, value }) {
   return (
     <div className="flex items-start gap-3">
@@ -37,34 +32,35 @@ function InfoTile({ icon: Icon, label, value }) {
 }
 
 export default function Dashboard() {
-  // IMPORTANT: everything on this page is scoped to `student.studentNo`
-  // from AuthContext — never to a URL param or a globally-selected project.
+  // Scoped to the logged-in student's group only. Other teams' deliverables
+  // are never fetched here. When Google Sheets auth lands, keep using
+  // student.groupCode from AuthContext — not a URL parameter.
   const { student } = useAuth();
 
   const [project, setProject] = useState(null);
   const [memberCount, setMemberCount] = useState(0);
-  const [requirements, setRequirements] = useState([]);
+  const [deliverables, setDeliverables] = useState([]);
   const [overallProgress, setOverallProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!student) return;
+    if (!student?.groupCode) return;
 
-    let isCurrent = true; // guards against setting state after unmount
+    let isCurrent = true;
 
     async function loadDashboardData() {
       setIsLoading(true);
-      const [projectData, members, reqs, progress] = await Promise.all([
+      const [projectData, count, groupDeliverables, progress] = await Promise.all([
         getProjectByGroupCode(student.groupCode),
-        getProjectMembers(student.groupCode),
-        getStudentRequirements(student.studentNo),
-        getStudentOverallProgress(student.studentNo),
+        getProjectMemberCount(student.groupCode),
+        getGroupDeliverables(student.groupCode),
+        getGroupSubmissionProgress(student.groupCode),
       ]);
 
       if (!isCurrent) return;
       setProject(projectData);
-      setMemberCount(members.length);
-      setRequirements(reqs);
+      setMemberCount(count);
+      setDeliverables(groupDeliverables);
       setOverallProgress(progress);
       setIsLoading(false);
     }
@@ -81,13 +77,12 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-8">
-      {/* Greeting */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-display font-bold">
           Welcome, {firstName}
         </h1>
         <p className="mt-1 text-sm text-brand-black/55">
-          Here's where your Technopreneurship project stands right now.
+          This dashboard shows only your group&apos;s deliverables and progress.
         </p>
       </div>
 
@@ -98,7 +93,6 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          {/* Student information */}
           <section className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-black/45 mb-5">
               Student Information
@@ -107,19 +101,15 @@ export default function Dashboard() {
               <InfoTile icon={IdCard} label="Full Name" value={student.name} />
               <InfoTile icon={Hash} label="Student Number" value={student.studentNo} />
               <InfoTile icon={BookOpen} label="Section" value={student.section} />
-              <InfoTile icon={Users2} label="Group Code" value={student.groupCode} />
+              <InfoTile icon={Users2} label="Your Group" value={student.groupCode} />
             </div>
           </section>
 
-          {/* My project + overall progress */}
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2 rounded-2xl border border-surface-border bg-white p-6 shadow-card flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-black/45">
-                  My Technopreneurship Project
-                </h2>
-                {project && <StatusPill status={project.status} size="sm" />}
-              </div>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-black/45 mb-4">
+                My Group&apos;s Project
+              </h2>
 
               {project ? (
                 <>
@@ -129,24 +119,10 @@ export default function Dashboard() {
                   </p>
 
                   <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-brand-black/60">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 font-mono">
-                      <Hash className="w-3 h-3" />
-                      {student.groupCode}
-                    </span>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1">
                       <Users2 className="w-3 h-3" />
                       {memberCount} members
                     </span>
-                  </div>
-
-                  <div className="mt-auto pt-5">
-                    <Link
-                      to={`/projects/${student.groupCode}`}
-                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-black hover:gap-2.5 transition-all"
-                    >
-                      View full project details
-                      <ArrowUpRight className="w-4 h-4" strokeWidth={2.5} />
-                    </Link>
                   </div>
                 </>
               ) : (
@@ -157,23 +133,17 @@ export default function Dashboard() {
             </div>
 
             <ProgressCard
-              label="My Overall Progress"
+              label="Group Progress"
               value={overallProgress}
               icon={TrendingUp}
-              hint="Average across your 4 requirements"
+              hint="Share of your group's deliverables that are submitted"
             />
           </section>
 
-          {/* Course Deliverables spreadsheet converter card */}
           <section>
-            <CourseDeliverables />
-          </section>
-
-          {/* Requirement tracker - private to this student */}
-          <section>
-            <RequirementTracker
-              requirements={requirements}
-              title="My Requirement Tracker"
+            <CourseDeliverables
+              deliverables={deliverables}
+              title="Group Deliverables"
             />
           </section>
         </>

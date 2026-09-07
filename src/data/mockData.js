@@ -26,13 +26,13 @@ export const requirementDefs = [
   { key: "SPMP", label: "Project Management Plan (SPMP)", dueDate: "2026-10-17" },
 ];
 
-// value 0 = Not Started, 1 = In Progress, 2 = Completed
-const STATUS_BY_VALUE = ["Not Started", "In Progress", "Completed"];
-const PROGRESS_BY_VALUE = [0, 50, 100];
+// value 0 or 1 = Missing (not submitted), 2 = Submitted
+const STATUS_BY_VALUE = ["Missing", "Missing", "Submitted"];
+const PROGRESS_BY_VALUE = [0, 0, 100];
 
 export const students = [
-  { studentNo: "22-5657-518", name: "CABILING, PATRICK ROMULO P.", section: "GO1", groupCode: "2526-sem2-it411-01", pin: "1234" },
-  { studentNo: "22-2730-457", name: "CANENCIA, WALTER L.", section: "GO1", groupCode: "2526-sem2-it411-01", pin: "1234" },
+  { studentNo: "24-3906-492", name: "ABARQUEZ, YOHANN M.", section: "GO1", groupCode: "2526-sem2-it411-01", pin: "1234" },
+  { studentNo: "18-1745-979", name: "LABAJOS, ANDREA JOANNE A.", section: "GO1", groupCode: "2526-sem2-it411-01", pin: "1234" },
   { studentNo: "22-4722-701", name: "ESTOPACE, DERRICK M.", section: "GO1", groupCode: "2526-sem2-it411-01", pin: "1234" },
   { studentNo: "19-3026-410", name: "OPINION, SHANE ADRIAN C.", section: "GO1", groupCode: "2526-sem2-it411-01", pin: "1234" },
   { studentNo: "22-4672-711", name: "POGOY, JOHN MICHAEL I.", section: "GO1", groupCode: "2526-sem2-it411-01", pin: "1234" },
@@ -59,7 +59,7 @@ export const students = [
 // Raw per-student, per-requirement values taken straight from the roster.
 // This is deliberately the only place these numbers live.
 const RAW_STUDENT_REQ_VALUES = {
-  "22-5657-518": [0, 0, 0, 0],
+  "24-3906-492": [0, 0, 0, 0],
   "22-2730-457": [0, 2, 2, 0],
   "22-4722-701": [0, 0, 0, 0],
   "19-3026-410": [2, 2, 2, 2],
@@ -85,14 +85,19 @@ const RAW_STUDENT_REQ_VALUES = {
 // the shape a Google Sheet "StudentRequirements" tab would realistically have.
 export const studentRequirements = Object.entries(RAW_STUDENT_REQ_VALUES).flatMap(
   ([studentNo, values]) =>
-    requirementDefs.map((def, i) => ({
-      studentNo,
-      requirement: def.key,
-      label: def.label,
-      dueDate: def.dueDate,
-      status: STATUS_BY_VALUE[values[i]],
-      progress: PROGRESS_BY_VALUE[values[i]],
-    }))
+    requirementDefs.map((def, i) => {
+      const status = STATUS_BY_VALUE[values[i]];
+      const isSubmitted = status === "Submitted";
+      return {
+        studentNo,
+        requirement: def.key,
+        label: def.label,
+        dueDate: def.dueDate,
+        status,
+        progress: PROGRESS_BY_VALUE[values[i]],
+        submittedDate: isSubmitted ? def.dueDate : null,
+      };
+    })
 );
 
 // One row per group. Title/description live ONLY here, never on the student.
@@ -102,27 +107,23 @@ export const projects = [
     title: "AgriConnect",
     description:
       "A smart monitoring platform that helps small-scale farmers track soil conditions and crop health using low-cost sensors.",
-    status: "In Progress",
   },
   {
     groupCode: "2526-sem2-it411-02",
     title: "MediQueue",
     description:
       "A digital queueing and referral system that reduces waiting time for patients at community health centers.",
-    status: "Not Started",
   },
   {
     groupCode: "2526-sem2-it411-03",
     title: "EcoTrack",
     description:
       "An environmental monitoring system for schools that logs air quality and waste data to support campus sustainability drives.",
-    status: "Not Started",
   },
   {
     groupCode: "2526-sem2-it411-04",
     title: "CampusEats",
     description:
       "A pre-order and pickup-scheduling app for campus food stalls, built to cut down lunch-break queues.",
-    status: "Not Started",
   },
 ];

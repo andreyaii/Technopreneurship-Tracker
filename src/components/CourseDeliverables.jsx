@@ -1,22 +1,20 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
   FileText,
   HelpCircle,
   Presentation,
   CheckCircle2,
-  XCircle,
-  Clock,
-  AlertCircle,
+  Circle,
   Calendar,
   Layers,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { mockDeliverables } from "../data/mockDeliverables";
 
-/**
- * Returns an appropriate icon based on deliverable type
- */
+export const DELIVERABLES_PER_PAGE = 6;
+
 function getDeliverableIcon(type) {
   switch (type) {
     case "quiz":
@@ -33,83 +31,69 @@ function getDeliverableIcon(type) {
   }
 }
 
-/**
- * Visual pill badge for deliverable status
- * - Completed / Submitted / Graded: Green badge with checkmark
- * - Missing: Red badge with X
- * - Pending: Amber / Soft Red badge
- */
-function StatusBadge({ status }) {
-  const normalized = (status || "").toLowerCase();
+function isSubmitted(item) {
+  return item.status === "Submitted" || item.isSubmitted === true;
+}
 
-  if (["submitted", "graded", "completed"].includes(normalized)) {
+function StatusBadge({ submitted }) {
+  if (submitted) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" strokeWidth={2.5} />
-        {status}
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} />
+        Submitted
       </span>
     );
   }
 
-  if (["missing", "overdue"].includes(normalized)) {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-        <XCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" strokeWidth={2.5} />
-        {status}
-      </span>
-    );
-  }
-
-  // Pending / Not Started fallback
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" strokeWidth={2.5} />
-      {status || "Pending"}
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white text-brand-black/60 border border-surface-border">
+      <Circle className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} />
+      Missing
     </span>
   );
 }
 
 /**
- * CourseDeliverables Component
- *
- * A modern card widget for student dashboards that converts spreadsheet
- * tracking rows into an interactive, cleanly styled table with internal scroll.
- *
- * @param {Object} props
- * @param {Array} [props.deliverables] - Optional array of deliverable objects.
- * @param {string} [props.title] - Optional custom title (defaults to "Course Deliverables").
- * @param {string} [props.className] - Optional container CSS class overrides.
+ * Group-scoped deliverable list. Status is only Submitted or Missing.
+ * Shows 6 rows per page.
  */
 export default function CourseDeliverables({
-  deliverables = mockDeliverables,
-  title = "Course Deliverables",
+  deliverables = [],
+  title = "Group Deliverables",
   className = "",
 }) {
   const [activeFilter, setActiveFilter] = useState("all");
+  const [page, setPage] = useState(0);
 
-  const completedCount = deliverables.filter(
-    (d) => d.isSubmitted || ["submitted", "graded", "completed"].includes((d.status || "").toLowerCase())
-  ).length;
+  const submittedCount = deliverables.filter(isSubmitted).length;
+  const missingCount = deliverables.length - submittedCount;
 
-  const missingCount = deliverables.filter(
-    (d) => ["missing", "overdue"].includes((d.status || "").toLowerCase())
-  ).length;
+  const filteredDeliverables = useMemo(() => {
+    return deliverables.filter((item) => {
+      const submitted = isSubmitted(item);
+      if (activeFilter === "submitted") return submitted;
+      if (activeFilter === "missing") return !submitted;
+      return true;
+    });
+  }, [deliverables, activeFilter]);
 
-  const filteredDeliverables = deliverables.filter((item) => {
-    const isDone = item.isSubmitted || ["submitted", "graded", "completed"].includes((item.status || "").toLowerCase());
-    const isMissing = ["missing", "overdue"].includes((item.status || "").toLowerCase());
+  const totalPages = Math.max(1, Math.ceil(filteredDeliverables.length / DELIVERABLES_PER_PAGE));
 
-    if (activeFilter === "completed") return isDone;
-    if (activeFilter === "missing") return isMissing;
-    if (activeFilter === "pending") return !isDone && !isMissing;
-    return true;
-  });
+  useEffect(() => {
+    setPage(0);
+  }, [activeFilter, deliverables]);
+
+  const currentPage = Math.min(page, totalPages - 1);
+  const startIndex = currentPage * DELIVERABLES_PER_PAGE;
+  const pageRows = filteredDeliverables.slice(startIndex, startIndex + DELIVERABLES_PER_PAGE);
+  const submittedShare = deliverables.length
+    ? Math.round((submittedCount / deliverables.length) * 100)
+    : 0;
 
   return (
     <div
       className={`rounded-2xl border border-surface-border bg-white shadow-card overflow-hidden flex flex-col ${className}`}
     >
-      {/* Card Header */}
       <div className="p-5 sm:p-6 border-b border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-yellow-soft flex items-center justify-center shrink-0 border border-brand-yellow/30 shadow-sm">
@@ -125,12 +109,11 @@ export default function CourseDeliverables({
               </span>
             </div>
             <p className="text-xs text-brand-black/50 mt-0.5">
-              Track your assignments, quizzes, and project milestones
+              Your group&apos;s submissions and missing items
             </p>
           </div>
         </div>
 
-        {/* Quick Summary Pill & Filter Tabs */}
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           <button
             type="button"
@@ -145,36 +128,32 @@ export default function CourseDeliverables({
           </button>
           <button
             type="button"
-            onClick={() => setActiveFilter("completed")}
+            onClick={() => setActiveFilter("submitted")}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeFilter === "completed"
-                ? "bg-emerald-700 text-white shadow-sm"
-                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100/80 border border-emerald-200/60"
+              activeFilter === "submitted"
+                ? "bg-emerald-800 text-white shadow-sm"
+                : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100/80 border border-emerald-200/60"
             }`}
           >
-            Done ({completedCount})
+            Submitted ({submittedCount})
           </button>
-          {missingCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setActiveFilter("missing")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeFilter === "missing"
-                  ? "bg-rose-700 text-white shadow-sm"
-                  : "bg-rose-50 text-rose-700 hover:bg-rose-100/80 border border-rose-200/60"
-              }`}
-            >
-              Missing ({missingCount})
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setActiveFilter("missing")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              activeFilter === "missing"
+                ? "bg-brand-black text-white shadow-sm"
+                : "bg-surface-muted text-brand-black/60 hover:text-brand-black border border-surface-border"
+            }`}
+          >
+            Missing ({missingCount})
+          </button>
         </div>
       </div>
 
-      {/* Internal Scroll Container for Table/List */}
-      <div className="overflow-x-auto overflow-y-auto max-h-[420px] scrollbar-thin">
+      <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[620px]">
-          {/* Sticky Header */}
-          <thead className="sticky top-0 z-10 bg-surface-muted/95 backdrop-blur border-b border-surface-border text-[11px] font-bold uppercase tracking-wider text-brand-black/50">
+          <thead className="bg-surface-muted/95 border-b border-surface-border text-[11px] font-bold uppercase tracking-wider text-brand-black/50">
             <tr>
               <th scope="col" className="py-3 px-5 sm:px-6">
                 Deliverable
@@ -182,39 +161,33 @@ export default function CourseDeliverables({
               <th scope="col" className="py-3 px-4 w-36">
                 Status
               </th>
-              <th scope="col" className="py-3 px-5 sm:px-6 w-48 text-right sm:text-left">
-                Submitted Date
+              <th scope="col" className="py-3 px-5 sm:px-6 w-48">
+                Submitted date
               </th>
             </tr>
           </thead>
 
-          {/* Table Body */}
           <tbody className="divide-y divide-surface-border text-sm">
-            {filteredDeliverables.length > 0 ? (
-              filteredDeliverables.map((item) => {
+            {pageRows.length > 0 ? (
+              pageRows.map((item) => {
                 const IconComponent = getDeliverableIcon(item.type);
-                const isCompleted =
-                  item.isSubmitted ||
-                  ["submitted", "graded", "completed"].includes(
-                    (item.status || "").toLowerCase()
-                  );
+                const submitted = isSubmitted(item);
 
                 return (
                   <tr
                     key={item.id}
                     className="hover:bg-surface-muted/60 transition-colors group"
                   >
-                    {/* Deliverable Column */}
                     <td className="py-4 px-5 sm:px-6">
                       <div className="flex items-start gap-3.5">
-                        <div className="w-9 h-9 rounded-lg bg-surface-muted border border-surface-border flex items-center justify-center shrink-0 mt-0.5 group-hover:border-brand-black/20 group-hover:bg-white transition-all shadow-2xs">
+                        <div className="w-9 h-9 rounded-lg bg-surface-muted border border-surface-border flex items-center justify-center shrink-0 mt-0.5 group-hover:border-brand-black/20 group-hover:bg-white transition-all">
                           <IconComponent
                             className="w-4 h-4 text-brand-black/70 group-hover:text-brand-black transition-colors"
                             strokeWidth={2.2}
                           />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-brand-black text-sm sm:text-base leading-snug group-hover:text-brand-black">
+                          <p className="font-semibold text-brand-black text-sm sm:text-base leading-snug">
                             {item.title}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
@@ -235,25 +208,17 @@ export default function CourseDeliverables({
                       </div>
                     </td>
 
-                    {/* Status Column */}
                     <td className="py-4 px-4 align-middle">
-                      <StatusBadge status={item.status} />
+                      <StatusBadge submitted={submitted} />
                     </td>
 
-                    {/* Submitted Date Column */}
-                    <td className="py-4 px-5 sm:px-6 align-middle text-right sm:text-left">
-                      {isCompleted ? (
-                        <div className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-brand-black">
-                          <Clock
-                            className="w-3.5 h-3.5 text-emerald-600 shrink-0"
-                            strokeWidth={2.2}
-                          />
-                          <span>{item.submittedDate || "Submitted"}</span>
-                        </div>
-                      ) : (
-                        <span className="italic text-rose-500/80 text-xs sm:text-sm font-normal">
-                          Not yet submitted
+                    <td className="py-4 px-5 sm:px-6 align-middle">
+                      {submitted ? (
+                        <span className="text-xs sm:text-sm font-medium text-brand-black">
+                          {item.submittedDate}
                         </span>
+                      ) : (
+                        <span className="text-xs sm:text-sm text-brand-black/40">—</span>
                       )}
                     </td>
                   </tr>
@@ -273,26 +238,54 @@ export default function CourseDeliverables({
         </table>
       </div>
 
-      {/* Card Footer / Progress Bar Summary */}
-      <div className="px-5 sm:px-6 py-3.5 bg-surface-muted/40 border-t border-surface-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-brand-black/60">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-brand-black">
-            {completedCount} of {deliverables.length}
-          </span>
-          <span>deliverables completed</span>
+      <div className="px-5 sm:px-6 py-3.5 bg-surface-muted/40 border-t border-surface-border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-brand-black/60">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-brand-black">
+              {submittedCount} of {deliverables.length}
+            </span>
+            <span>submitted</span>
+            <span className="font-semibold text-brand-progress">{submittedShare}%</span>
+          </div>
+          <div className="w-full sm:w-40 bg-surface-border h-2 rounded-full overflow-hidden">
+            <div
+              className="bg-brand-progress h-full rounded-full transition-all duration-500"
+              style={{ width: `${submittedShare}%` }}
+            />
+          </div>
         </div>
-        <div className="w-full sm:w-48 bg-surface-border h-2 rounded-full overflow-hidden">
-          <div
-            className="bg-brand-black h-full rounded-full transition-all duration-500"
-            style={{
-              width: `${
-                deliverables.length
-                  ? Math.round((completedCount / deliverables.length) * 100)
-                  : 0
-              }%`,
-            }}
-          />
-        </div>
+
+        {filteredDeliverables.length > DELIVERABLES_PER_PAGE && (
+          <div className="flex items-center gap-2">
+            <span>
+              {filteredDeliverables.length === 0
+                ? "0"
+                : `${startIndex + 1}–${startIndex + pageRows.length}`}{" "}
+              of {filteredDeliverables.length}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={currentPage === 0}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-surface-border bg-white disabled:opacity-40 hover:bg-surface-muted"
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="font-medium text-brand-black min-w-[3rem] text-center">
+              {currentPage + 1} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={currentPage >= totalPages - 1}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-surface-border bg-white disabled:opacity-40 hover:bg-surface-muted"
+              aria-label="Next page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

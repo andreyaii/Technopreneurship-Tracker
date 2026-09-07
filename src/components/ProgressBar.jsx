@@ -1,7 +1,6 @@
 /**
  * ProgressBar
- * A slim horizontal progress indicator. Reused anywhere a percentage
- * needs to be shown: project cards, dashboard, requirement rows.
+ * Teal fill (distinct from the yellow brand) with a clear percentage.
  */
 export default function ProgressBar({ value = 0, size = "md", showLabel = false }) {
   const clamped = Math.min(100, Math.max(0, value));
@@ -15,15 +14,16 @@ export default function ProgressBar({ value = 0, size = "md", showLabel = false 
         aria-valuenow={clamped}
         aria-valuemin={0}
         aria-valuemax={100}
+        aria-label={`${clamped} percent submitted`}
       >
         <div
-          className="h-full rounded-full bg-brand-yellow transition-all duration-500 ease-out"
+          className="h-full rounded-full bg-brand-progress transition-all duration-500 ease-out"
           style={{ width: `${clamped}%` }}
         />
       </div>
       {showLabel && (
         <div className="mt-1 text-xs font-medium text-brand-black/60">
-          {clamped}% complete
+          {clamped}% submitted
         </div>
       )}
     </div>

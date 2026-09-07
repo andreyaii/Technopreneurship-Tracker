@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { IdCard, KeyRound, LogIn, AlertCircle, Loader2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
+/**
+ * Mock student login form. Google Sheets authentication will replace
+ * the AuthContext `login` / projectService.authenticateStudent bodies later.
+ * The form fields (student number + PIN) can stay the same.
+ */
 export default function LoginForm() {
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();

@@ -27,11 +27,7 @@ export default function Projects() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return projects;
-    return projects.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        p.groupCode.toLowerCase().includes(q)
-    );
+    return projects.filter((p) => p.title.toLowerCase().includes(q));
   }, [projects, query]);
 
   return (
@@ -42,7 +38,7 @@ export default function Projects() {
             All Technopreneurship Projects
           </h1>
           <p className="mt-1 text-sm text-brand-black/55">
-            Browse every team's project. Click a card to see full details.
+            High-level overview of each team: title, description, size, and overall progress.
           </p>
         </div>
 
@@ -50,7 +46,7 @@ export default function Projects() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-black/35" />
           <input
             type="text"
-            placeholder="Search by title or group code"
+            placeholder="Search by title"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-surface-border bg-white text-sm placeholder:text-brand-black/35 focus:border-brand-black outline-none transition-colors"

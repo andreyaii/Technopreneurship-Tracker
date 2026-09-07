@@ -2,18 +2,18 @@
  * projectService.js
  * ------------------------------------------------------------------
  * Data-access layer. Pages and components ONLY talk to this file —
- * never to src/data/mockData.js directly.
+ * never to src/data/mockData.js or mockDeliverables.js directly.
  *
- * Today every function reads from mockData.js. Later, each function
- * body can be swapped to call a Google Apps Script Web App endpoint
- * (e.g. fetch(`${API_URL}?action=getStudentByStudentNo&studentNo=...`))
- * without changing a single import in the React components.
+ * Today every function reads mock data. Later, swap each body for a
+ * fetch() to a Google Apps Script Web App, keeping the same names and
+ * return shapes. Authentication against Google Sheets is not wired yet;
+ * `authenticateStudent` stays mock until that connection exists.
  *
- *   React UI  ->  projectService.js  ->  [mockData.js today | Apps Script later]  ->  Google Sheet
+ * Student-facing data is always scoped by the logged-in student's
+ * groupCode. Detail views (dashboard, group deliverables) must never
+ * be loaded for another team.
  *
- * All functions are written as async (return Promises) even though the
- * mock versions resolve instantly — this keeps the calling code identical
- * once real network calls are introduced.
+ *   React UI  ->  projectService.js  ->  [mock today | Apps Script later]
  * ------------------------------------------------------------------
  */
 
@@ -23,63 +23,110 @@ import {
   studentRequirements,
   requirementDefs,
 } from "../data/mockData";
+import {
+  deliverableCatalog,
+  groupSubmissions,
+} from "../data/mockDeliverables";
 
-// Small helper to simulate the shape of a future network call.
 const resolveAsync = (value) => Promise.resolve(value);
 
-/**
- * Look up a single student by their student number.
- * Returns undefined if no match is found.
- */
-export async function getStudentByStudentNo(studentNo) {
-  const student = students.find((s) => s.studentNo === studentNo);
-  return resolveAsync(student ? { ...student } : undefined);
+function toPublicStudent(student) {
+  if (!student) return undefined;
+  const { pin: _omit, ...safeStudent } = student;
+  return safeStudent;
+}
+
+function mergeGroupDeliverable(item, submission) {
+  if (submission) {
+    return {
+      ...item,
+      isSubmitted: true,
+      submittedDate: submission.submittedDate,
+      status: "Submitted",
+    };
+  }
+  return {
+    ...item,
+    isSubmitted: false,
+    submittedDate: null,
+    status: "Missing",
+  };
 }
 
 /**
- * Mock authentication: matches Student Number + 4-digit PIN.
- * Never exposes the PIN field back to the caller.
- * In the future this check will happen server-side (Apps Script),
- * which is the "secure" version of this same function signature.
+ * Look up a single student by student number (no PIN).
+ */
+export async function getStudentByStudentNo(studentNo) {
+  const student = students.find((s) => s.studentNo === studentNo);
+  return resolveAsync(student ? toPublicStudent(student) : undefined);
+}
+
+/**
+ * Resolves which group a student belongs to.
+ * Future Sheets: look up the student row and read the Group Code column.
+ * All private dashboards must use this group — never another team's code.
+ */
+export async function getStudentGroupCode(studentNo) {
+  const student = await getStudentByStudentNo(studentNo);
+  return resolveAsync(student?.groupCode);
+}
+
+/**
+ * Mock authentication: Student Number + 4-digit PIN.
+ * Never returns the PIN. Replace this body with a Sheets/Apps Script
+ * check when the database is connected — do not authenticate in the UI.
  */
 export async function authenticateStudent(studentNo, pin) {
   const match = students.find(
     (s) => s.studentNo === studentNo.trim() && s.pin === pin.trim()
   );
-  if (!match) return resolveAsync(null);
-  const { pin: _omit, ...safeStudent } = match;
-  return resolveAsync(safeStudent);
+  return resolveAsync(match ? toPublicStudent(match) : null);
 }
 
 /**
- * All requirement rows belonging to ONE student.
- * This is the only place private, per-student progress is read from —
- * dashboards must always call this with the currently authenticated
- * student's number, never with someone else's.
+ * Course deliverables for ONE group: Submitted or Missing only.
+ * This is what the student dashboard should show after login.
+ */
+export async function getGroupDeliverables(groupCode) {
+  const submittedMap = groupSubmissions[groupCode] || {};
+  const rows = deliverableCatalog.map((item) =>
+    mergeGroupDeliverable(item, submittedMap[item.id])
+  );
+  return resolveAsync(rows);
+}
+
+/**
+ * Share of group deliverables that are Submitted (0–100).
+ */
+export async function getGroupSubmissionProgress(groupCode) {
+  const rows = await getGroupDeliverables(groupCode);
+  if (!rows.length) return resolveAsync(0);
+  const submitted = rows.filter((r) => r.status === "Submitted").length;
+  return resolveAsync(Math.round((submitted / rows.length) * 100));
+}
+
+/**
+ * Requirement rows for ONE student (legacy SDLC list).
+ * Prefer getGroupDeliverables for the student dashboard.
  */
 export async function getStudentRequirements(studentNo) {
   const rows = studentRequirements.filter((r) => r.studentNo === studentNo);
-  // keep them in canonical SDLC order regardless of storage order
   const ordered = requirementDefs.map((def) =>
     rows.find((r) => r.requirement === def.key)
   );
   return resolveAsync(ordered);
 }
 
-/**
- * A single student's overall completion percentage,
- * averaged across their four requirements.
- */
 export async function getStudentOverallProgress(studentNo) {
   const rows = await getStudentRequirements(studentNo);
   if (!rows.length) return resolveAsync(0);
-  const avg = rows.reduce((sum, r) => sum + r.progress, 0) / rows.length;
-  return resolveAsync(Math.round(avg));
+  const submitted = rows.filter((r) => r.status === "Submitted").length;
+  return resolveAsync(Math.round((submitted / rows.length) * 100));
 }
 
 /**
- * Every student that shares a given groupCode (i.e. project team).
- * Only returns public info (name + studentNo) — no requirement data.
+ * Public member count helpers. Names are intentionally not attached to
+ * All Projects cards. Detail UIs should not list other students' profiles.
  */
 export async function getProjectMembers(groupCode) {
   const members = students
@@ -88,25 +135,21 @@ export async function getProjectMembers(groupCode) {
   return resolveAsync(members);
 }
 
-/**
- * A project's overall progress, derived (not stored) by averaging
- * every member's individual overall progress.
- */
-export async function getProjectOverallProgress(groupCode) {
+export async function getProjectMemberCount(groupCode) {
   const members = await getProjectMembers(groupCode);
-  if (!members.length) return resolveAsync(0);
-  const scores = await Promise.all(
-    members.map((m) => getStudentOverallProgress(m.studentNo))
-  );
-  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-  return resolveAsync(Math.round(avg));
+  return resolveAsync(members.length);
 }
 
 /**
- * Aggregate, team-level view of each requirement (used on the public
- * Project Details page — never exposes any one student's status).
- * For each requirement, reports the average progress across the team
- * and a rolled-up status label.
+ * Group-level overall progress from deliverable submissions — not grades.
+ */
+export async function getProjectOverallProgress(groupCode) {
+  return getGroupSubmissionProgress(groupCode);
+}
+
+/**
+ * Team-level requirement overview (Submitted / Missing only).
+ * Used only for the logged-in student's own group.
  */
 export async function getProjectRequirementsOverview(groupCode) {
   const members = await getProjectMembers(groupCode);
@@ -116,46 +159,47 @@ export async function getProjectRequirementsOverview(groupCode) {
 
   return resolveAsync(
     requirementDefs.map((def, i) => {
-      const values = allRows.map((rows) => rows[i]?.progress ?? 0);
-      const avgProgress = values.length
-        ? Math.round(values.reduce((a, b) => a + b, 0) / values.length)
-        : 0;
-
-      let status = "Not Started";
-      if (avgProgress === 100) status = "Completed";
-      else if (avgProgress > 0) status = "In Progress";
+      const submittedCount = allRows.filter(
+        (rows) => rows[i]?.status === "Submitted"
+      ).length;
+      const allSubmitted =
+        members.length > 0 && submittedCount === members.length;
+      const status = allSubmitted ? "Submitted" : "Missing";
+      const submittedDate = allSubmitted
+        ? allRows[0]?.[i]?.submittedDate ?? null
+        : null;
 
       return {
         key: def.key,
         label: def.label,
         dueDate: def.dueDate,
-        progress: avgProgress,
+        progress: allSubmitted ? 100 : 0,
         status,
+        submittedDate,
       };
     })
   );
 }
 
-/**
- * A single project's base info (title/description/status), by groupCode.
- */
 export async function getProjectByGroupCode(groupCode) {
   const project = projects.find((p) => p.groupCode === groupCode);
   return resolveAsync(project ? { ...project } : undefined);
 }
 
 /**
- * Every project, enriched with computed member count + overall progress,
- * for the "View All Projects" grid. Only public data is included.
+ * All Projects grid: title, description, member count, overall progress.
+ * No member names, no per-requirement status.
  */
 export async function getAllProjects() {
   const enriched = await Promise.all(
     projects.map(async (project) => {
-      const members = await getProjectMembers(project.groupCode);
+      const memberCount = await getProjectMemberCount(project.groupCode);
       const progress = await getProjectOverallProgress(project.groupCode);
       return {
-        ...project,
-        memberCount: members.length,
+        groupCode: project.groupCode,
+        title: project.title,
+        description: project.description,
+        memberCount,
         progress,
       };
     })

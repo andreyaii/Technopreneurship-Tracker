@@ -11,6 +11,8 @@ export default {
           yellow: "#FDCC01",
           "yellow-dark": "#E0B400",
           "yellow-soft": "#FFF6D6",
+          progress: "#0F766E",
+          "progress-soft": "#CCFBF1",
           black: "#111111",
           ink: "#1A1A1A",
         },

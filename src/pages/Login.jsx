@@ -40,15 +40,15 @@ export default function Login() {
             <span className="text-brand-yellow"> step by step.</span>
           </h1>
           <p className="mt-4 text-white/60 text-sm leading-relaxed">
-            From Requirement Inventory to your Project Management Plan —
-            see exactly where your team stands, and what's due next.
+            After you sign in you will only see your own group&apos;s
+            deliverables, submission dates, and overall progress.
           </p>
 
           <div className="mt-10 flex flex-col gap-4">
             {[
-              { icon: ListChecks, text: "Follow ReqInventory → SRS → SDD → SPMP" },
-              { icon: Users, text: "See your team's project at a glance" },
-              { icon: TrendingUp, text: "Track your own completion progress" },
+              { icon: ListChecks, text: "See Submitted or Missing for each item" },
+              { icon: Users, text: "Your group's project only" },
+              { icon: TrendingUp, text: "Track overall group progress" },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
@@ -61,7 +61,7 @@ export default function Login() {
         </div>
 
         <p className="relative text-xs text-white/30">
-          IT 411 · Technopreneurship &middot; A.Y. 2025&ndash;2026
+          ES038 · Technopreneurship &middot; A.Y. 2026&ndash;2027
         </p>
       </div>
 

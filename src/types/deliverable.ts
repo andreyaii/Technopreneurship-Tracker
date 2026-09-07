@@ -2,13 +2,7 @@
  * Type definitions for Course Deliverables
  */
 
-export type DeliverableStatus =
-  | "Submitted"
-  | "Graded"
-  | "Completed"
-  | "Missing"
-  | "Pending"
-  | "Not Started";
+export type DeliverableStatus = "Submitted" | "Missing";
 
 export type DeliverableType =
   | "document"
@@ -23,8 +17,7 @@ export interface Deliverable {
   dueDate: string;
   isSubmitted: boolean;
   submittedDate: string | null;
-  status: DeliverableStatus | string;
+  status: DeliverableStatus;
   category?: string;
   type?: DeliverableType | string;
-  grade?: string | null;
 }

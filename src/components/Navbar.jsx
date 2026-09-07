@@ -40,7 +40,7 @@ export default function Navbar() {
                 Technopreneurship Tracker
               </p>
               <p className="text-[11px] text-white/50 hidden sm:block">
-                IT 411 · Project Progress System
+                ES038 · Project Progress System
               </p>
             </div>
           </div>

@@ -1,24 +1,35 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, Navigate } from "react-router-dom";
 import { ArrowLeft, Loader2, SearchX } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import {
   getProjectByGroupCode,
-  getProjectMembers,
-  getProjectRequirementsOverview,
+  getProjectMemberCount,
+  getGroupDeliverables,
   getProjectOverallProgress,
 } from "../services/projectService";
 import ProjectDetails from "../components/ProjectDetails";
 
+/**
+ * Own-group details only. Other group codes redirect away so students
+ * cannot open another team's tracker via the URL.
+ * Ready for Sheets auth: keep comparing params to student.groupCode.
+ */
 export default function ProjectDetailsPage() {
   const { groupCode } = useParams();
+  const { student } = useAuth();
 
   const [project, setProject] = useState(null);
-  const [members, setMembers] = useState([]);
-  const [requirementsOverview, setRequirementsOverview] = useState([]);
+  const [memberCount, setMemberCount] = useState(0);
+  const [deliverables, setDeliverables] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  const isOwnGroup = Boolean(student?.groupCode && student.groupCode === groupCode);
+
   useEffect(() => {
+    if (!isOwnGroup) return;
+
     let isCurrent = true;
 
     async function loadDetails() {
@@ -34,16 +45,16 @@ export default function ProjectDetailsPage() {
         return;
       }
 
-      const [memberList, overview, progress] = await Promise.all([
-        getProjectMembers(groupCode),
-        getProjectRequirementsOverview(groupCode),
+      const [count, groupDeliverables, progress] = await Promise.all([
+        getProjectMemberCount(groupCode),
+        getGroupDeliverables(groupCode),
         getProjectOverallProgress(groupCode),
       ]);
 
       if (!isCurrent) return;
       setProject({ ...projectData, progress });
-      setMembers(memberList);
-      setRequirementsOverview(overview);
+      setMemberCount(count);
+      setDeliverables(groupDeliverables);
       setIsLoading(false);
     }
 
@@ -51,16 +62,20 @@ export default function ProjectDetailsPage() {
     return () => {
       isCurrent = false;
     };
-  }, [groupCode]);
+  }, [groupCode, isOwnGroup]);
+
+  if (student && !isOwnGroup) {
+    return <Navigate to="/projects" replace />;
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6">
       <Link
-        to="/projects"
+        to="/dashboard"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-black/60 hover:text-brand-black transition-colors w-fit"
       >
         <ArrowLeft className="w-4 h-4" strokeWidth={2.25} />
-        Back to All Projects
+        Back to Dashboard
       </Link>
 
       {isLoading ? (
@@ -74,14 +89,14 @@ export default function ProjectDetailsPage() {
             <SearchX className="w-5 h-5 text-brand-black/40" />
           </div>
           <p className="text-sm text-brand-black/50">
-            No project found for group code &ldquo;{groupCode}&rdquo;.
+            No project found for your group.
           </p>
         </div>
       ) : (
         <ProjectDetails
           project={project}
-          members={members}
-          requirementsOverview={requirementsOverview}
+          memberCount={memberCount}
+          deliverables={deliverables}
         />
       )}
     </div>

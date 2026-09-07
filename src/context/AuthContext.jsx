@@ -4,15 +4,17 @@ import { authenticateStudent, getStudentByStudentNo } from "../services/projectS
 /**
  * AuthContext
  * ------------------------------------------------------------------
- * Holds ONLY the authenticated student's studentNo (plus a cached copy
- * of their public profile for convenience). Every "my data" query in the
- * app must derive from this context — never from the URL or from
- * whichever project happens to be on screen. That's what keeps Patrick
- * from ever being able to see Walter's requirement progress.
+ * Holds the authenticated student, including groupCode. After login the
+ * app identifies their team from that field and the dashboard loads only
+ * that group's deliverables and progress.
  *
- * This is intentionally a thin, swappable layer: when real auth arrives
- * (Google Apps Script verifying the student server-side), only the
- * `login` function body needs to change.
+ * Google Sheets / database authentication is not implemented yet. When it
+ * is, replace `login` (and authenticateStudent in projectService) with a
+ * server-side check. Keep returning { studentNo, name, section, groupCode }
+ * so the UI does not change.
+ *
+ * Do not load another group's tracker from the URL. Project details
+ * compare :groupCode to student.groupCode and redirect if they differ.
  * ------------------------------------------------------------------
  */
 

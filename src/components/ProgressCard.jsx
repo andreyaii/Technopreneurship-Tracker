@@ -23,7 +23,7 @@ export default function ProgressCard({ label, value, icon: Icon, hint }) {
         <span className="text-4xl font-display font-bold leading-none">{value}%</span>
       </div>
 
-      <ProgressBar value={value} size="md" />
+      <ProgressBar value={value} size="md" showLabel />
 
       {hint && <p className="text-xs text-brand-black/50">{hint}</p>}
     </div>

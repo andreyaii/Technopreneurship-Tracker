@@ -1,30 +1,25 @@
-import { CheckCircle2, Clock, Circle } from "lucide-react";
+import { CheckCircle2, Circle } from "lucide-react";
 
 /**
- * StatusPill
- * Consistent status badge used across cards, tracker rows, and details.
- * Deliberately uses icon + text (not color alone) so meaning doesn't
- * depend on distinguishing yellow from gray.
+ * StatusPill — deliverables are only Submitted or Missing.
+ * Icon + text so meaning does not rely on color alone.
  */
 const CONFIG = {
-  "Not Started": {
+  Submitted: {
+    icon: CheckCircle2,
+    classes: "bg-emerald-50 text-emerald-800 border border-emerald-200",
+  },
+  Missing: {
     icon: Circle,
     classes: "bg-white text-brand-black/60 border border-surface-border",
-  },
-  "In Progress": {
-    icon: Clock,
-    classes: "bg-brand-yellow text-brand-black border border-brand-yellow-dark",
-  },
-  Completed: {
-    icon: CheckCircle2,
-    classes: "bg-brand-black text-white border border-brand-black",
   },
 };
 
 export default function StatusPill({ status, size = "md" }) {
-  const config = CONFIG[status] || CONFIG["Not Started"];
+  const config = CONFIG[status] || CONFIG.Missing;
   const Icon = config.icon;
-  const sizeClasses = size === "sm" ? "text-[11px] px-2 py-0.5 gap-1" : "text-xs px-2.5 py-1 gap-1.5";
+  const sizeClasses =
+    size === "sm" ? "text-[11px] px-2 py-0.5 gap-1" : "text-xs px-2.5 py-1 gap-1.5";
 
   return (
     <span

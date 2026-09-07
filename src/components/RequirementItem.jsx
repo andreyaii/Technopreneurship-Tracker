@@ -1,20 +1,17 @@
-import { CheckCircle2, Clock, Circle } from "lucide-react";
-import ProgressBar from "./ProgressBar";
+import { CheckCircle2, Circle } from "lucide-react";
 import StatusPill from "./StatusPill";
 
 const NODE_ICON = {
-  "Not Started": Circle,
-  "In Progress": Clock,
-  Completed: CheckCircle2,
+  Submitted: CheckCircle2,
+  Missing: Circle,
 };
 
 const NODE_STYLE = {
-  "Not Started": "bg-white border-2 border-surface-border text-brand-black/40",
-  "In Progress": "bg-brand-yellow border-2 border-brand-yellow-dark text-brand-black",
-  Completed: "bg-brand-black border-2 border-brand-black text-white",
+  Submitted: "bg-brand-progress border-2 border-brand-progress text-white",
+  Missing: "bg-white border-2 border-surface-border text-brand-black/40",
 };
 
-function formatDueDate(dateStr) {
+function formatDate(dateStr) {
   if (!dateStr) return null;
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return dateStr;
@@ -22,18 +19,16 @@ function formatDueDate(dateStr) {
 }
 
 /**
- * RequirementItem
- * One row/step of the RequirementTracker stepper. `step` and `isLast`
- * control the connecting rail so the sequence (ReqInventory -> SRS ->
- * SDD -> SPMP) reads as an actual pipeline, not just a list.
+ * One row of the requirement/deliverable tracker.
+ * Status is only Submitted or Missing — no grades or scores.
  */
 export default function RequirementItem({ requirement, step, isLast }) {
-  const { label, status, progress, dueDate } = requirement;
+  const { label, status, dueDate, submittedDate } = requirement;
   const Icon = NODE_ICON[status] || Circle;
+  const isSubmitted = status === "Submitted";
 
   return (
     <li className="relative flex gap-4 pb-8 last:pb-0">
-      {/* connecting rail */}
       {!isLast && (
         <span
           aria-hidden="true"
@@ -41,16 +36,14 @@ export default function RequirementItem({ requirement, step, isLast }) {
         />
       )}
 
-      {/* step node */}
       <div className="relative z-10 flex flex-col items-center shrink-0">
         <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center ${NODE_STYLE[status] || NODE_STYLE["Not Started"]}`}
+          className={`w-8 h-8 rounded-full flex items-center justify-center ${NODE_STYLE[status] || NODE_STYLE.Missing}`}
         >
           <Icon className="w-4 h-4" strokeWidth={2.5} />
         </div>
       </div>
 
-      {/* content */}
       <div className="flex-1 min-w-0 pt-0.5">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
@@ -61,18 +54,15 @@ export default function RequirementItem({ requirement, step, isLast }) {
               {label}
             </h4>
           </div>
-          <StatusPill status={status} size="sm" />
+          <StatusPill status={isSubmitted ? "Submitted" : "Missing"} size="sm" />
         </div>
 
-        <div className="mt-3 max-w-sm">
-          <ProgressBar value={progress} size="sm" />
+        <div className="mt-2 flex flex-col gap-0.5 text-xs text-brand-black/50">
+          {isSubmitted && submittedDate && (
+            <p>Submitted {formatDate(submittedDate)}</p>
+          )}
+          {dueDate && <p>Due {formatDate(dueDate)}</p>}
         </div>
-
-        {dueDate && (
-          <p className="mt-2 text-xs text-brand-black/50">
-            Due {formatDueDate(dueDate)}
-          </p>
-        )}
       </div>
     </li>
   );
