@@ -13,9 +13,9 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-white">
+    <div className="min-h-screen grid lg:grid-cols-[45%_55%] bg-white">
       {/* Brand panel */}
-      <div className="hidden lg:flex flex-col justify-between bg-brand-black text-white p-12 relative overflow-hidden">
+      <div className="hidden lg:flex flex-col justify-between bg-brand-black text-white p-12 lg:p-14 relative overflow-hidden">
         <div
           aria-hidden="true"
           className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-brand-yellow/10"
@@ -66,8 +66,8 @@ export default function Login() {
       </div>
 
       {/* Login form panel */}
-      <div className="flex flex-col items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-sm">
+      <div className="flex flex-col items-center justify-center p-6 sm:p-12 lg:p-16">
+        <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-2.5 mb-8 justify-center">
             <div className="w-9 h-9 rounded-lg bg-brand-yellow flex items-center justify-center">
               <Rocket className="w-5 h-5 text-brand-black" strokeWidth={2.5} />
@@ -77,7 +77,7 @@ export default function Login() {
             </span>
           </div>
 
-          <h2 className="text-2xl font-display font-bold text-brand-black">
+          <h2 className="text-2xl sm:text-3xl font-display font-bold text-brand-black">
             Welcome back
           </h2>
           <p className="mt-1.5 text-sm text-brand-black/55">

@@ -28,114 +28,114 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-brand-black text-white">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-[72px] sm:h-20">
           {/* Brand */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-brand-yellow flex items-center justify-center">
-              <Rocket className="w-[18px] h-[18px] text-brand-black" strokeWidth={2.5} />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-yellow flex items-center justify-center shadow-sm">
+              <Rocket className="w-5 h-5 text-brand-black" strokeWidth={2.5} />
             </div>
             <div className="leading-tight">
-              <p className="font-display font-bold text-sm sm:text-base tracking-tight">
+              <p className="font-display font-bold text-base sm:text-lg tracking-tight">
                 Technopreneurship Tracker
               </p>
-              <p className="text-[11px] text-white/50 hidden sm:block">
+              <p className="text-xs text-white/60 hidden sm:block">
                 ES038 · Project Progress System
               </p>
             </div>
           </div>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1.5">
             {LINKS.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
                 className={({ isActive }) =>
-                  `flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  `flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                     isActive
-                      ? "bg-brand-yellow text-brand-black"
-                      : "text-white/70 hover:text-white hover:bg-white/10"
+                      ? "bg-brand-yellow text-brand-black shadow-sm"
+                      : "text-white/75 hover:text-white hover:bg-white/10"
                   }`
                 }
               >
-                <Icon className="w-4 h-4" strokeWidth={2.25} />
+                <Icon className="w-[18px] h-[18px]" strokeWidth={2.25} />
                 {label}
               </NavLink>
             ))}
           </nav>
 
           {/* Student profile + logout */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-4">
             {student && (
-              <div className="flex items-center gap-2.5 pl-3 border-l border-white/10">
-                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-semibold">
+              <div className="flex items-center gap-3 pl-4 border-l border-white/15">
+                <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-xs sm:text-sm font-semibold border border-white/10">
                   {initials}
                 </div>
                 <div className="leading-tight">
                   <p className="text-sm font-medium">{student.name.split(",")[0]}</p>
-                  <p className="text-[11px] text-white/50">{student.studentNo}</p>
+                  <p className="text-xs text-white/50">{student.studentNo}</p>
                 </div>
               </div>
             )}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-medium text-white/75 hover:text-white hover:bg-white/10 transition-colors"
               title="Log out"
             >
-              <LogOut className="w-4 h-4" strokeWidth={2.25} />
+              <LogOut className="w-[18px] h-[18px]" strokeWidth={2.25} />
               <span className="hidden lg:inline">Log out</span>
             </button>
           </div>
 
           {/* Mobile toggle */}
           <button
-            className="md:hidden p-2 rounded-lg hover:bg-white/10"
+            className="md:hidden p-2.5 rounded-xl hover:bg-white/10 transition-colors"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label="Toggle navigation menu"
           >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </div>
 
       {/* Mobile nav */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-white/10 px-4 pb-4 pt-2">
+        <div className="md:hidden border-t border-white/10 px-4 pb-5 pt-3 bg-brand-black">
           {student && (
-            <div className="flex items-center gap-2.5 py-3 mb-1 border-b border-white/10">
-              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-xs font-semibold">
+            <div className="flex items-center gap-3 py-3 mb-2 border-b border-white/10">
+              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-sm font-semibold border border-white/10">
                 {initials}
               </div>
               <div className="leading-tight">
                 <p className="text-sm font-medium">{student.name.split(",")[0]}</p>
-                <p className="text-[11px] text-white/50">{student.studentNo}</p>
+                <p className="text-xs text-white/50">{student.studentNo}</p>
               </div>
             </div>
           )}
-          <nav className="flex flex-col gap-1 py-2">
+          <nav className="flex flex-col gap-1.5 py-2">
             {LINKS.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
                 onClick={() => setMobileOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
                     isActive
                       ? "bg-brand-yellow text-brand-black"
-                      : "text-white/70 hover:text-white hover:bg-white/10"
+                      : "text-white/75 hover:text-white hover:bg-white/10"
                   }`
                 }
               >
-                <Icon className="w-4 h-4" strokeWidth={2.25} />
+                <Icon className="w-5 h-5" strokeWidth={2.25} />
                 {label}
               </NavLink>
             ))}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/75 hover:text-white hover:bg-white/10 transition-colors"
             >
-              <LogOut className="w-4 h-4" strokeWidth={2.25} />
+              <LogOut className="w-5 h-5" strokeWidth={2.25} />
               Log out
             </button>
           </nav>

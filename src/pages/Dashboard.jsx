@@ -4,6 +4,7 @@ import {
   Users2,
   Hash,
   BookOpen,
+  GraduationCap,
   TrendingUp,
   Loader2,
 } from "lucide-react";
@@ -17,15 +18,17 @@ import {
 import ProgressCard from "../components/ProgressCard";
 import CourseDeliverables from "../components/CourseDeliverables";
 
-function InfoTile({ icon: Icon, label, value }) {
+function InfoTile({ icon: Icon, label, value, className = "" }) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="w-9 h-9 rounded-lg bg-surface-muted flex items-center justify-center shrink-0">
+    <div className={`flex items-start gap-3 min-w-0 ${className}`}>
+      <div className="w-9 h-9 rounded-lg bg-surface-muted flex items-center justify-center shrink-0 mt-0.5">
         <Icon className="w-4 h-4 text-brand-black/60" strokeWidth={2.25} />
       </div>
-      <div className="min-w-0">
-        <p className="text-xs text-brand-black/45">{label}</p>
-        <p className="text-sm font-semibold text-brand-black truncate">{value}</p>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-brand-black/45">{label}</p>
+        <p className="text-sm font-semibold text-brand-black leading-snug break-words" title={value}>
+          {value}
+        </p>
       </div>
     </div>
   );
@@ -76,7 +79,7 @@ export default function Dashboard() {
   const firstName = student.name.split(",")[0];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8">
       <div>
         <h1 className="text-2xl sm:text-3xl font-display font-bold">
           Welcome, {firstName}
@@ -93,14 +96,15 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <section className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-black/45 mb-5">
+          <section className="rounded-2xl border border-surface-border bg-white p-6 sm:p-7 shadow-card">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-brand-black/45 mb-5">
               Student Information
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-5 sm:gap-6">
               <InfoTile icon={IdCard} label="Full Name" value={student.name} />
               <InfoTile icon={Hash} label="Student Number" value={student.studentNo} />
               <InfoTile icon={BookOpen} label="Section" value={student.section} />
+              <InfoTile icon={GraduationCap} label="Instructor" value={student.instructor || "Engr. Jonathan A. Cartilla"} />
               <InfoTile icon={Users2} label="Your Group" value={student.groupCode} />
             </div>
           </section>
