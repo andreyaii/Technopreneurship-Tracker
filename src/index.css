@@ -44,6 +44,51 @@
     background-color: #E7E5E4;
     border-radius: 999px;
   }
+
+  @keyframes float-slow-1 {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+    }
+    33% {
+      transform: translate3d(18px, -22px, 0) rotate(3deg) scale(1.05);
+    }
+    66% {
+      transform: translate3d(-14px, 16px, 0) rotate(-2deg) scale(0.96);
+    }
+  }
+
+  @keyframes float-slow-2 {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+    }
+    33% {
+      transform: translate3d(-20px, 18px, 0) rotate(-3deg) scale(0.97);
+    }
+    66% {
+      transform: translate3d(16px, -18px, 0) rotate(2deg) scale(1.04);
+    }
+  }
+
+  @keyframes float-slow-3 {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(15px, 20px, 0) scale(1.06);
+    }
+  }
+
+  .animate-float-1 {
+    animation: float-slow-1 14s ease-in-out infinite;
+  }
+
+  .animate-float-2 {
+    animation: float-slow-2 18s ease-in-out infinite;
+  }
+
+  .animate-float-3 {
+    animation: float-slow-3 22s ease-in-out infinite;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

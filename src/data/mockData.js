@@ -31,11 +31,11 @@ const STATUS_BY_VALUE = ["Missing", "Missing", "Submitted"];
 const PROGRESS_BY_VALUE = [0, 0, 100];
 
 export const students = [
-  { studentNo: "24-3906-492", name: "ABARQUEZ, YOHANN M.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-01", pin: "1234" },
-  { studentNo: "18-1745-979", name: "LABAJOS, ANDREA JOANNE A.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-01", pin: "1234" },
-  { studentNo: "22-4722-701", name: "ESTOPACE, DERRICK M.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-01", pin: "1234" },
-  { studentNo: "19-3026-410", name: "OPINION, SHANE ADRIAN C.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-01", pin: "1234" },
-  { studentNo: "22-4672-711", name: "POGOY, JOHN MICHAEL I.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-01", pin: "1234" },
+  { studentNo: "24-3906-492", name: "ABARQUEZ, YOHANN M.", section: "GO1", instructor: "Engr. Ralph P. Laviste", groupCode: "2526-sem2-it411-01", pin: "1234" },
+  { studentNo: "18-1745-979", name: "LABAJOS, ANDREA JOANNE A.", section: "GO1", instructor: "Engr. Ralph P. Laviste", groupCode: "2526-sem2-it411-01", pin: "1234" },
+  { studentNo: "22-4722-701", name: "ESTOPACE, DERRICK M.", section: "GO1", instructor: "Engr. Ralph P. Laviste", groupCode: "2526-sem2-it411-01", pin: "1234" },
+  { studentNo: "19-3026-410", name: "OPINION, SHANE ADRIAN C.", section: "GO1", instructor: "Engr. Ralph P. Laviste", groupCode: "2526-sem2-it411-01", pin: "1234" },
+  { studentNo: "22-4672-711", name: "POGOY, JOHN MICHAEL I.", section: "GO1", instructor: "Engr. Ralph P. Laviste", groupCode: "2526-sem2-it411-01", pin: "1234" },
 
   { studentNo: "22-3329-130", name: "LABORADA, JOHN JOSEPH A.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-02", pin: "1234" },
   { studentNo: "22-1825-345", name: "LAPURE, JESSIE NOEL D.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-02", pin: "1234" },
