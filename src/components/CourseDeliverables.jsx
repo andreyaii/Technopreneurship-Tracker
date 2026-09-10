@@ -46,7 +46,7 @@ function StatusBadge({ submitted }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white text-brand-black/60 border border-surface-border">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
       <Circle className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} />
       Missing
     </span>
@@ -118,33 +118,30 @@ export default function CourseDeliverables({
           <button
             type="button"
             onClick={() => setActiveFilter("all")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeFilter === "all"
-                ? "bg-brand-black text-white shadow-sm"
-                : "bg-surface-muted text-brand-black/60 hover:text-brand-black hover:bg-surface-border/50"
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeFilter === "all"
+              ? "bg-brand-black text-white shadow-sm"
+              : "bg-surface-muted text-brand-black/60 hover:text-brand-black hover:bg-surface-border/50"
+              }`}
           >
             All ({deliverables.length})
           </button>
           <button
             type="button"
             onClick={() => setActiveFilter("submitted")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeFilter === "submitted"
-                ? "bg-emerald-800 text-white shadow-sm"
-                : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100/80 border border-emerald-200/60"
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeFilter === "submitted"
+              ? "bg-emerald-800 text-white shadow-sm"
+              : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100/80 border border-emerald-200/60"
+              }`}
           >
             Submitted ({submittedCount})
           </button>
           <button
             type="button"
             onClick={() => setActiveFilter("missing")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeFilter === "missing"
-                ? "bg-brand-black text-white shadow-sm"
-                : "bg-surface-muted text-brand-black/60 hover:text-brand-black border border-surface-border"
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeFilter === "missing"
+                ? "bg-rose-700 text-white shadow-sm"
+                : "bg-rose-50 text-rose-700 hover:bg-rose-100/80 border border-rose-200/60"
+              }`}
           >
             Missing ({missingCount})
           </button>

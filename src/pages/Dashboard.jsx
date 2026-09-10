@@ -147,7 +147,7 @@ export default function Dashboard() {
           <section>
             <CourseDeliverables
               deliverables={deliverables}
-              title="Group Deliverables"
+              title="Deliverables"
             />
           </section>
         </>

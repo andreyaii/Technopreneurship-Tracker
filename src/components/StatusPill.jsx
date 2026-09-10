@@ -11,7 +11,7 @@ const CONFIG = {
   },
   Missing: {
     icon: Circle,
-    classes: "bg-white text-brand-black/60 border border-surface-border",
+    classes: "bg-red-50 text-red-700 border border-red-200",
   },
 };
 
