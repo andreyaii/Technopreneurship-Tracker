@@ -89,6 +89,34 @@
   .animate-float-3 {
     animation: float-slow-3 22s ease-in-out infinite;
   }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes modalSlideUp {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 20px, 0) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-modalSlideUp {
+    animation: modalSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

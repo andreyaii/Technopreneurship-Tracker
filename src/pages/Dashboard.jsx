@@ -14,9 +14,11 @@ import {
   getProjectMemberCount,
   getGroupDeliverables,
   getGroupSubmissionProgress,
+  getProjectNotes,
 } from "../services/projectService";
 import ProgressCard from "../components/ProgressCard";
 import CourseDeliverables from "../components/CourseDeliverables";
+import MentorCommentsCard from "../components/MentorCommentsCard";
 
 function InfoTile({ icon: Icon, label, value, className = "" }) {
   return (
@@ -44,6 +46,7 @@ export default function Dashboard() {
   const [memberCount, setMemberCount] = useState(0);
   const [deliverables, setDeliverables] = useState([]);
   const [overallProgress, setOverallProgress] = useState(0);
+  const [notes, setNotes] = useState({ studentComment: "", adviserFeedback: "" });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -53,11 +56,12 @@ export default function Dashboard() {
 
     async function loadDashboardData() {
       setIsLoading(true);
-      const [projectData, count, groupDeliverables, progress] = await Promise.all([
+      const [projectData, count, groupDeliverables, progress, projectNotes] = await Promise.all([
         getProjectByGroupCode(student.groupCode),
         getProjectMemberCount(student.groupCode),
         getGroupDeliverables(student.groupCode),
         getGroupSubmissionProgress(student.groupCode),
+        getProjectNotes(student.groupCode),
       ]);
 
       if (!isCurrent) return;
@@ -65,6 +69,7 @@ export default function Dashboard() {
       setMemberCount(count);
       setDeliverables(groupDeliverables);
       setOverallProgress(progress);
+      setNotes(projectNotes);
       setIsLoading(false);
     }
 
@@ -104,7 +109,7 @@ export default function Dashboard() {
               <InfoTile icon={IdCard} label="Full Name" value={student.name} />
               <InfoTile icon={Hash} label="Student Number" value={student.studentNo} />
               <InfoTile icon={BookOpen} label="Section" value={student.section} />
-              <InfoTile icon={GraduationCap} label="Instructor" value={student.instructor || "Engr. Jonathan A. Cartilla"} />
+              <InfoTile icon={GraduationCap} label="Mentor" value={student.mentor || "Engr. Jonathan A. Cartilla"} />
               <InfoTile icon={Users2} label="Your Group" value={student.groupCode} />
             </div>
           </section>
@@ -150,6 +155,14 @@ export default function Dashboard() {
               title="Deliverables"
             />
           </section>
+
+          <MentorCommentsCard
+            notes={notes}
+            setNotes={setNotes}
+            groupCode={student.groupCode}
+            mentorName={student.mentor || "Engr. Jonathan A. Cartilla"}
+            isAdviser={false}
+          />
         </>
       )}
     </div>

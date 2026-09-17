@@ -161,6 +161,7 @@ export default function CourseDeliverables({
               <th scope="col" className="py-3 px-5 sm:px-6 w-48">
                 Submitted date
               </th>
+              <th scope="col" className="py-3 px-4 w-28">Days late</th>
             </tr>
           </thead>
 
@@ -218,13 +219,16 @@ export default function CourseDeliverables({
                         <span className="text-xs sm:text-sm text-brand-black/40">—</span>
                       )}
                     </td>
+                    <td className="py-4 px-4 align-middle text-xs font-semibold">
+                      {item.daysLate > 0 ? <span className="text-rose-700">{item.daysLate}</span> : <span className="text-emerald-700">0</span>}
+                    </td>
                   </tr>
                 );
               })
             ) : (
               <tr>
                 <td
-                  colSpan={3}
+                  colSpan={4}
                   className="py-12 text-center text-sm text-brand-black/40"
                 >
                   No deliverables match the selected filter.

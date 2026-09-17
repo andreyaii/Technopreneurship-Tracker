@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, Loader2, FolderKanban } from "lucide-react";
 import { getAllProjects } from "../services/projectService";
 import ProjectCard from "../components/ProjectCard";
+import { useAuth } from "../context/AuthContext";
 
 export default function Projects() {
+  const { student } = useAuth();
   const [projects, setProjects] = useState([]);
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -35,10 +37,10 @@ export default function Projects() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-display font-bold">
-            All Technopreneurship Projects
+            {student?.role === "adviser" ? "Advisee Projects" : "All Technopreneurship Projects"}
           </h1>
           <p className="mt-1 text-sm text-brand-black/55">
-            High-level overview of each team: title, description, size, and overall progress.
+            {student?.role === "adviser" ? "Review every advisee group, their members, and leader-reported progress." : "High-level overview of each team: title, description, size, and overall progress."}
           </p>
         </div>
 

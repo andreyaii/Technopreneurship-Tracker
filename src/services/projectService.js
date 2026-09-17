@@ -29,11 +29,26 @@ import {
 } from "../data/mockDeliverables";
 
 const resolveAsync = (value) => Promise.resolve(value);
+const adviser = { role: "adviser", name: "Adviser Demo", adviserNo: "adviser" };
+const projectNotes = {
+  "2526-sem2-it411-01": {
+    studentComment: "We are validating the first sensor readings with two farms.",
+    adviserFeedback: "Good momentum. Please include the validation results in the next update.",
+  },
+};
+
+function daysLate(dueDate, completedDate) {
+  const due = new Date(dueDate);
+  const end = completedDate ? new Date(completedDate) : new Date();
+  due.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.ceil((end - due) / 86400000));
+}
 
 function toPublicStudent(student) {
   if (!student) return undefined;
   const { pin: _omit, ...safeStudent } = student;
-  return safeStudent;
+  return { ...safeStudent, role: "student", mentor: student.mentor || student.instructor };
 }
 
 function mergeGroupDeliverable(item, submission) {
@@ -43,6 +58,7 @@ function mergeGroupDeliverable(item, submission) {
       isSubmitted: true,
       submittedDate: submission.submittedDate,
       status: "Submitted",
+      daysLate: daysLate(item.dueDate, submission.submittedDate),
     };
   }
   return {
@@ -50,6 +66,7 @@ function mergeGroupDeliverable(item, submission) {
     isSubmitted: false,
     submittedDate: null,
     status: "Missing",
+    daysLate: daysLate(item.dueDate),
   };
 }
 
@@ -81,6 +98,10 @@ export async function authenticateStudent(studentNo, pin) {
     (s) => s.studentNo === studentNo.trim() && s.pin === pin.trim()
   );
   return resolveAsync(match ? toPublicStudent(match) : null);
+}
+
+export async function authenticateAdviser(adviserNo, pin) {
+  return resolveAsync(adviserNo.trim().toLowerCase() === "adviser" && pin.trim() === "1234" ? adviser : null);
 }
 
 /**
@@ -183,7 +204,23 @@ export async function getProjectRequirementsOverview(groupCode) {
 
 export async function getProjectByGroupCode(groupCode) {
   const project = projects.find((p) => p.groupCode === groupCode);
-  return resolveAsync(project ? { ...project } : undefined);
+  return resolveAsync(project ? { ...project, ...(projectNotes[groupCode] || {}) } : undefined);
+}
+
+export async function getProjectNotes(groupCode) {
+  return resolveAsync({ studentComment: "", adviserFeedback: "", ...(projectNotes[groupCode] || {}) });
+}
+
+export async function saveStudentComment(groupCode, studentComment) {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  projectNotes[groupCode] = { ...(projectNotes[groupCode] || {}), studentComment: studentComment.trim() };
+  return getProjectNotes(groupCode);
+}
+
+export async function saveAdviserFeedback(groupCode, adviserFeedback) {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  projectNotes[groupCode] = { ...(projectNotes[groupCode] || {}), adviserFeedback: adviserFeedback.trim() };
+  return getProjectNotes(groupCode);
 }
 
 /**

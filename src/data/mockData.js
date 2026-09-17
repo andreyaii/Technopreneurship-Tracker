@@ -37,23 +37,23 @@ export const students = [
   { studentNo: "19-3026-410", name: "OPINION, SHANE ADRIAN C.", section: "GO1", instructor: "Engr. Ralph P. Laviste", groupCode: "2526-sem2-it411-01", pin: "1234" },
   { studentNo: "22-4672-711", name: "POGOY, JOHN MICHAEL I.", section: "GO1", instructor: "Engr. Ralph P. Laviste", groupCode: "2526-sem2-it411-01", pin: "1234" },
 
-  { studentNo: "22-3329-130", name: "LABORADA, JOHN JOSEPH A.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-02", pin: "1234" },
-  { studentNo: "22-1825-345", name: "LAPURE, JESSIE NOEL D.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-02", pin: "1234" },
-  { studentNo: "22-6109-516", name: "LAWAS, JOSE RAPHAEL R.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-02", pin: "1234" },
-  { studentNo: "22-1137-480", name: "PEPITO, JOHN PATRICK G.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-02", pin: "1234" },
-  { studentNo: "14-0438-845", name: "VERANO, JOEL JR. M.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-02", pin: "1234" },
+  { studentNo: "22-3329-130", name: "LABORADA, JOHN JOSEPH A.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-02", pin: "1234" },
+  { studentNo: "22-1825-345", name: "LAPURE, JESSIE NOEL D.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-02", pin: "1234" },
+  { studentNo: "22-6109-516", name: "LAWAS, JOSE RAPHAEL R.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-02", pin: "1234" },
+  { studentNo: "22-1137-480", name: "PEPITO, JOHN PATRICK G.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-02", pin: "1234" },
+  { studentNo: "14-0438-845", name: "VERANO, JOEL JR. M.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-02", pin: "1234" },
 
-  { studentNo: "22-5709-645", name: "CANTILLER, CHRISTIAN JAYSON J.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-03", pin: "1234" },
-  { studentNo: "21-4995-761", name: "DIVA, JUSTIN ANDRY N.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-03", pin: "1234" },
-  { studentNo: "17-0136-431", name: "DY, JIVONZ M.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-03", pin: "1234" },
-  { studentNo: "23-5649-484", name: "GO, FELIX CHRISTIAN T.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-03", pin: "1234" },
-  { studentNo: "19-4436-202", name: "LADA, NATHAN XANDER", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-03", pin: "1234" },
+  { studentNo: "22-5709-645", name: "CANTILLER, CHRISTIAN JAYSON J.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-03", pin: "1234" },
+  { studentNo: "21-4995-761", name: "DIVA, JUSTIN ANDRY N.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-03", pin: "1234" },
+  { studentNo: "17-0136-431", name: "DY, JIVONZ M.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-03", pin: "1234" },
+  { studentNo: "23-5649-484", name: "GO, FELIX CHRISTIAN T.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-03", pin: "1234" },
+  { studentNo: "19-4436-202", name: "LADA, NATHAN XANDER", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-03", pin: "1234" },
 
-  { studentNo: "22-6058-210", name: "AHITO, BERNADETH CLAIRE G.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-04", pin: "1234" },
-  { studentNo: "2007-40198", name: "ALIVIO, ALYSSA BLANCHE S.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-04", pin: "1234" },
-  { studentNo: "21-2179-698", name: "CARAO, ESTELLE FELICITY T.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-04", pin: "1234" },
-  { studentNo: "19-1256-647", name: "COCA, JUVIE R.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-04", pin: "1234" },
-  { studentNo: "23-7717-740", name: "SEPULVEDA, KYLE E.", section: "GO1", instructor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-04", pin: "1234" },
+  { studentNo: "22-6058-210", name: "AHITO, BERNADETH CLAIRE G.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-04", pin: "1234" },
+  { studentNo: "2007-40198", name: "ALIVIO, ALYSSA BLANCHE S.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-04", pin: "1234" },
+  { studentNo: "21-2179-698", name: "CARAO, ESTELLE FELICITY T.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-04", pin: "1234" },
+  { studentNo: "19-1256-647", name: "COCA, JUVIE R.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-04", pin: "1234" },
+  { studentNo: "23-7717-740", name: "SEPULVEDA, KYLE E.", section: "GO1", mentor: "Engr. Jonathan A. Cartilla", groupCode: "2526-sem2-it411-04", pin: "1234" },
 ];
 
 // Raw per-student, per-requirement values taken straight from the roster.

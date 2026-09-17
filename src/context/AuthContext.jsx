@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { authenticateStudent, getStudentByStudentNo } from "../services/projectService";
+import { authenticateStudent, authenticateAdviser, getStudentByStudentNo } from "../services/projectService";
 
 /**
  * AuthContext
@@ -20,7 +20,7 @@ import { authenticateStudent, getStudentByStudentNo } from "../services/projectS
 
 const AuthContext = createContext(undefined);
 
-const STORAGE_KEY = "technopreneurship_auth_student_no";
+const STORAGE_KEY = "technopreneurship_auth_user";
 
 export function AuthProvider({ children }) {
   const [student, setStudent] = useState(null);
@@ -35,14 +35,16 @@ export function AuthProvider({ children }) {
   // student's public profile rather than trusting stored data, so this
   // mirrors how a real server-side session check would behave later.
   useEffect(() => {
-    const storedStudentNo = sessionStorage.getItem(STORAGE_KEY);
-    if (!storedStudentNo) {
+    const storedUser = sessionStorage.getItem(STORAGE_KEY);
+    if (!storedUser) {
       setIsRestoring(false);
       return;
     }
 
     let isCurrent = true;
-    getStudentByStudentNo(storedStudentNo).then((found) => {
+    const stored = JSON.parse(storedUser);
+    const restore = stored.role === "adviser" ? authenticateAdviser(stored.adviserNo, "1234") : getStudentByStudentNo(stored.studentNo);
+    restore.then((found) => {
       if (!isCurrent) return;
       if (found) {
         setStudent(found);
@@ -57,16 +59,18 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const login = useCallback(async (studentNo, pin) => {
+  const login = useCallback(async (identifier, pin, role = "student") => {
     setIsLoading(true);
     try {
-      const matched = await authenticateStudent(studentNo, pin);
+      const matched = role === "adviser"
+        ? await authenticateAdviser(identifier, pin)
+        : await authenticateStudent(identifier, pin);
       if (matched) {
         setStudent(matched);
-        sessionStorage.setItem(STORAGE_KEY, matched.studentNo);
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(matched));
         return { success: true };
       }
-      return { success: false, message: "Student number or PIN is incorrect." };
+      return { success: false, message: role === "adviser" ? "Adviser ID or PIN is incorrect." : "Student number or PIN is incorrect." };
     } finally {
       setIsLoading(false);
     }

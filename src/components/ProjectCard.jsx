@@ -1,4 +1,5 @@
-import { Users } from "lucide-react";
+import { Users, ArrowUpRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import ProgressBar from "./ProgressBar";
 
 /**
@@ -10,10 +11,10 @@ export default function ProjectCard({ project }) {
   const { title, description, memberCount, progress } = project;
 
   return (
-    <article className="w-full rounded-2xl border border-surface-border bg-white p-5 shadow-card flex flex-col gap-4">
+    <Link to={`/projects/${project.groupCode}`} className="w-full rounded-2xl border border-surface-border bg-white p-5 shadow-card flex flex-col gap-4 hover:border-brand-black/30 hover:-translate-y-0.5 transition-all">
       <div className="min-w-0">
-        <h3 className="text-lg font-display font-semibold text-brand-black">
-          {title}
+        <h3 className="flex items-center justify-between gap-2 text-lg font-display font-semibold text-brand-black">
+          {title}<ArrowUpRight className="w-4 h-4 shrink-0 text-brand-black/40" />
         </h3>
         <p className="mt-1 text-sm text-brand-black/60 line-clamp-3">
           {description}
@@ -32,6 +33,6 @@ export default function ProjectCard({ project }) {
         </div>
         <ProgressBar value={progress} size="sm" />
       </div>
-    </article>
+    </Link>
   );
 }

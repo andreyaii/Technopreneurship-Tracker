@@ -7,6 +7,8 @@ import {
   getProjectMemberCount,
   getGroupDeliverables,
   getProjectOverallProgress,
+  getProjectMembers,
+  getProjectNotes,
 } from "../services/projectService";
 import ProjectDetails from "../components/ProjectDetails";
 
@@ -21,11 +23,14 @@ export default function ProjectDetailsPage() {
 
   const [project, setProject] = useState(null);
   const [memberCount, setMemberCount] = useState(0);
+  const [members, setMembers] = useState([]);
+  const [notes, setNotes] = useState({ studentComment: "", adviserFeedback: "" });
   const [deliverables, setDeliverables] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const isOwnGroup = Boolean(student?.groupCode && student.groupCode === groupCode);
+  const isAdviser = student?.role === "adviser";
+  const isOwnGroup = Boolean(isAdviser || (student?.groupCode && student.groupCode === groupCode));
 
   useEffect(() => {
     if (!isOwnGroup) return;
@@ -45,15 +50,19 @@ export default function ProjectDetailsPage() {
         return;
       }
 
-      const [count, groupDeliverables, progress] = await Promise.all([
+      const [count, groupDeliverables, progress, projectMembers, projectNotes] = await Promise.all([
         getProjectMemberCount(groupCode),
         getGroupDeliverables(groupCode),
         getProjectOverallProgress(groupCode),
+        getProjectMembers(groupCode),
+        getProjectNotes(groupCode),
       ]);
 
       if (!isCurrent) return;
       setProject({ ...projectData, progress });
       setMemberCount(count);
+      setMembers(projectMembers);
+      setNotes(projectNotes);
       setDeliverables(groupDeliverables);
       setIsLoading(false);
     }
@@ -71,7 +80,7 @@ export default function ProjectDetailsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
       <Link
-        to="/dashboard"
+        to={isAdviser ? "/projects" : "/dashboard"}
         className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-black/60 hover:text-brand-black transition-colors w-fit"
       >
         <ArrowLeft className="w-4 h-4" strokeWidth={2.25} />
@@ -96,7 +105,12 @@ export default function ProjectDetailsPage() {
         <ProjectDetails
           project={project}
           memberCount={memberCount}
+          members={members}
           deliverables={deliverables}
+          notes={notes}
+          setNotes={setNotes}
+          isAdviser={isAdviser}
+          mentorName={project?.mentor || student?.mentor || "Engr. Jonathan A. Cartilla"}
         />
       )}
     </div>
