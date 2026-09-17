@@ -27,9 +27,9 @@ export default function ProtectedRoute({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-surface-muted">
+    <div className="min-h-screen bg-[#111111] flex flex-col">
       <Navbar />
-      <main>{children}</main>
+      <main className="flex-1 bg-surface-muted">{children}</main>
     </div>
   );
 }

@@ -7,10 +7,12 @@
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
+    background-color: #111111;
   }
 
   body {
-    @apply bg-surface-muted text-brand-black font-sans;
+    background-color: #111111;
+    @apply text-brand-black font-sans;
   }
 
   /* Only set the font family here — NOT color. Headings must inherit
