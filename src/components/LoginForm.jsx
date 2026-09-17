@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { IdCard, KeyRound, LogIn, AlertCircle, Loader2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import RoleSelector from "./RoleSelector";
 
 /**
  * Mock student login form. Google Sheets authentication will replace
@@ -41,21 +42,14 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="role" className="text-sm font-semibold text-gray-800">
-          Log in as
-        </label>
-        <select
-          id="role"
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          disabled={isLoading}
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium focus:bg-white focus:text-gray-900 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          <option value="student" className="text-gray-900 bg-white">Student</option>
-          <option value="adviser" className="text-gray-900 bg-white">Adviser</option>
-        </select>
-      </div>
+      <RoleSelector
+        role={role}
+        onChange={(newRole) => {
+          setRole(newRole);
+          setError("");
+        }}
+        disabled={isLoading}
+      />
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="studentNo" className="text-sm font-semibold text-gray-800">

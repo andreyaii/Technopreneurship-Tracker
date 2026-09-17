@@ -63,9 +63,6 @@ export default function LoginModal({ isOpen, onClose }) {
         >
           Welcome back
         </h2>
-        <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
-          Log in with your account details to view project progress.
-        </p>
 
         {/* Login Form with Yellow CTA and Focus Glow */}
         <div className="mt-6">
