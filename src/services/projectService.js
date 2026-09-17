@@ -23,10 +23,14 @@ import {
   studentRequirements,
   requirementDefs,
 } from "../data/mockData";
+
 import {
   deliverableCatalog,
   groupSubmissions,
 } from "../data/mockDeliverables";
+
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbw3-b781_EiXjAvJBsU6Knh5y_S4ABuaiLW2U0nKEolAm-y8YQ2m6qtafm-wHviIDAa/exec";
 
 const resolveAsync = (value) => Promise.resolve(value);
 const adviser = { role: "adviser", name: "Adviser Demo", adviserNo: "adviser" };
@@ -94,10 +98,45 @@ export async function getStudentGroupCode(studentNo) {
  * check when the database is connected — do not authenticate in the UI.
  */
 export async function authenticateStudent(studentNo, pin) {
-  const match = students.find(
-    (s) => s.studentNo === studentNo.trim() && s.pin === pin.trim()
-  );
-  return resolveAsync(match ? toPublicStudent(match) : null);
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8",
+      },
+      body: JSON.stringify({
+        studentNo: studentNo.trim(),
+        pin: pin.trim(),
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!data.success || !data.student) {
+      return null;
+    }
+
+    const apiStudent = data.student;
+
+    return {
+      role: "student",
+
+      // Basic student information
+      studentNo: String(apiStudent.studentNo || ""),
+      name: String(apiStudent.name || ""),
+      section: String(apiStudent.section || ""),
+      groupCode: String(apiStudent.groupCode || ""),
+      mentor: String(apiStudent.mentor || ""),
+      program: String(apiStudent.program || ""),
+
+      // Tracker data from Google Sheets
+      deliverables: apiStudent.deliverables || [],
+      progress: apiStudent.progress || 0,
+    };
+  } catch (error) {
+    console.error("Student login error:", error);
+    return null;
+  }
 }
 
 export async function authenticateAdviser(adviserNo, pin) {
