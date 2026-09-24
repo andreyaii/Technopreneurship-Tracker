@@ -13,6 +13,7 @@ const NODE_STYLE = {
 
 function formatDate(dateStr) {
   if (!dateStr) return null;
+  if (typeof dateStr === "string" && dateStr.trim().toLowerCase() === "open") return "Open";
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
@@ -61,7 +62,9 @@ export default function RequirementItem({ requirement, step, isLast }) {
           {isSubmitted && submittedDate && (
             <p>Submitted {formatDate(submittedDate)}</p>
           )}
-          {dueDate && <p>Due {formatDate(dueDate)}</p>}
+          {dueDate && (
+            <p>{formatDate(dueDate) === "Open" ? "Open" : `Due ${formatDate(dueDate)}`}</p>
+          )}
         </div>
       </div>
     </li>

@@ -31,6 +31,63 @@ function getDeliverableIcon(type) {
   }
 }
 
+/**
+ * Format due date based on Google Sheet value:
+ * - If contains a date, format using existing due-date format ("Due MMM DD, YYYY").
+ * - If contains "Open" (or case-insensitive "open"), display "Open".
+ * - If null, undefined, or empty string, fallback to "Open".
+ */
+export function formatDueDate(dueDate) {
+  if (dueDate === null || dueDate === undefined) {
+    return "Open";
+  }
+
+  if (dueDate instanceof Date) {
+    if (!Number.isNaN(dueDate.getTime())) {
+      const formatted = dueDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      });
+      return `Due ${formatted}`;
+    }
+    return "Open";
+  }
+
+  if (typeof dueDate === "string") {
+    const trimmed = dueDate.trim();
+    if (!trimmed || trimmed.toLowerCase() === "open") {
+      return "Open";
+    }
+
+    const rawVal = trimmed.replace(/^due\s+/i, "").trim();
+    if (rawVal.toLowerCase() === "open") {
+      return "Open";
+    }
+
+    const isoMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(rawVal);
+    let d;
+    if (isoMatch) {
+      d = new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
+    } else {
+      d = new Date(rawVal);
+    }
+
+    if (!Number.isNaN(d.getTime())) {
+      const formatted = d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      });
+      return `Due ${formatted}`;
+    }
+
+    return `Due ${rawVal}`;
+  }
+
+  return "Open";
+}
+
 function isSubmitted(item) {
   return item.status === "Submitted" || item.isSubmitted === true;
 }
@@ -191,7 +248,7 @@ export default function CourseDeliverables({
                           <div className="flex items-center gap-2 mt-1">
                             <span className="inline-flex items-center gap-1 text-xs text-brand-black/55 font-medium">
                               <Calendar className="w-3 h-3 text-brand-black/40" />
-                              Due {item.dueDate}
+                              {formatDueDate(item.dueDate ?? item.due_date ?? item.DueDate)}
                             </span>
                             {item.category && (
                               <>
