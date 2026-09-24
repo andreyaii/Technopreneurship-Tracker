@@ -24,11 +24,6 @@ import {
   requirementDefs,
 } from "../data/mockData";
 
-import {
-  deliverableCatalog,
-  groupSubmissions,
-} from "../data/mockDeliverables";
-
 const API_URL =
   "https://script.google.com/macros/s/AKfycbw3-b781_EiXjAvJBsU6Knh5y_S4ABuaiLW2U0nKEolAm-y8YQ2m6qtafm-wHviIDAa/exec";
 
@@ -41,13 +36,6 @@ const projectNotes = {
   },
 };
 
-function daysLate(dueDate, completedDate) {
-  const due = new Date(dueDate);
-  const end = completedDate ? new Date(completedDate) : new Date();
-  due.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
-  return Math.max(0, Math.ceil((end - due) / 86400000));
-}
 
 function toPublicStudent(student) {
   if (!student) return undefined;
@@ -55,24 +43,6 @@ function toPublicStudent(student) {
   return { ...safeStudent, role: "student", mentor: student.mentor || student.instructor };
 }
 
-function mergeGroupDeliverable(item, submission) {
-  if (submission) {
-    return {
-      ...item,
-      isSubmitted: true,
-      submittedDate: submission.submittedDate,
-      status: "Submitted",
-      daysLate: daysLate(item.dueDate, submission.submittedDate),
-    };
-  }
-  return {
-    ...item,
-    isSubmitted: false,
-    submittedDate: null,
-    status: "Missing",
-    daysLate: daysLate(item.dueDate),
-  };
-}
 
 /**
  * Look up a single student by student number (no PIN).
@@ -147,22 +117,31 @@ export async function authenticateAdviser(adviserNo, pin) {
  * Course deliverables for ONE group: Submitted or Missing only.
  * This is what the student dashboard should show after login.
  */
-export async function getGroupDeliverables(groupCode) {
-  const submittedMap = groupSubmissions[groupCode] || {};
-  const rows = deliverableCatalog.map((item) =>
-    mergeGroupDeliverable(item, submittedMap[item.id])
-  );
-  return resolveAsync(rows);
+export async function getGroupDeliverables(student) {
+  if (!student) {
+    return [];
+  }
+
+  return resolveAsync(student.deliverables || []);
 }
 
 /**
  * Share of group deliverables that are Submitted (0–100).
  */
-export async function getGroupSubmissionProgress(groupCode) {
-  const rows = await getGroupDeliverables(groupCode);
-  if (!rows.length) return resolveAsync(0);
-  const submitted = rows.filter((r) => r.status === "Submitted").length;
-  return resolveAsync(Math.round((submitted / rows.length) * 100));
+export async function getGroupSubmissionProgress(student) {
+  const rows = await getGroupDeliverables(student);
+
+  if (!rows.length) {
+    return 0;
+  }
+
+  const submitted = rows.filter(
+    (row) => row.status === "Submitted"
+  ).length;
+
+  return Math.round(
+    (submitted / rows.length) * 100
+  );
 }
 
 /**

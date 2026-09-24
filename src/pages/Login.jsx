@@ -5,14 +5,12 @@ import {
   ListChecks,
   Users,
   TrendingUp,
-  ArrowRight,
 } from "lucide-react";
-import LoginModal from "../components/LoginModal";
+import LoginForm from "../components/LoginForm";
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const { isAuthenticated, isRestoring } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Parallax cursor tracking
   const [mousePos, setMousePos] = useState({
@@ -91,14 +89,14 @@ export default function Login() {
           style={{ transform: `translate3d(${p1X * 0.5}px, ${p1Y * 0.5}px, 0)` }}
         />
 
-        {/* Abstract Shape 1: 3D Isometric Wireframe Cube (Floating in right open space) */}
+        {/* Abstract Shape 1: 3D Isometric Wireframe Cube (Floating in central space) */}
         <div
-          className="absolute top-28 right-16 lg:right-48 transition-transform duration-300 ease-out"
+          className="absolute top-20 lg:top-24 left-[46%] xl:left-[48%] transition-transform duration-300 ease-out"
           style={{ transform: `translate3d(${p3X}px, ${p3Y}px, 0)` }}
         >
           <svg
-            width="180"
-            height="180"
+            width="170"
+            height="170"
             viewBox="0 0 180 180"
             fill="none"
             className="opacity-75 animate-float-1"
@@ -132,14 +130,14 @@ export default function Login() {
           </svg>
         </div>
 
-        {/* Abstract Shape 2: Solid Hexagonal Tech Node (Mid-Right space) */}
+        {/* Abstract Shape 2: Solid Hexagonal Tech Node (Central-Lower Space) */}
         <div
-          className="absolute top-1/2 right-12 lg:right-32 transition-transform duration-300 ease-out"
+          className="absolute bottom-24 lg:bottom-32 left-[43%] xl:left-[45%] transition-transform duration-300 ease-out"
           style={{ transform: `translate3d(${p4X}px, ${p4Y}px, 0)` }}
         >
           <svg
-            width="140"
-            height="140"
+            width="130"
+            height="130"
             viewBox="0 0 140 140"
             fill="none"
             className="opacity-60 animate-float-2"
@@ -164,10 +162,10 @@ export default function Login() {
 
         {/* Abstract Shape 3: Geometric Diamond Wireframe (Lower Right) */}
         <div
-          className="absolute bottom-24 right-24 lg:right-64 transition-transform duration-300 ease-out"
+          className="absolute bottom-16 right-8 lg:right-20 transition-transform duration-300 ease-out"
           style={{ transform: `translate3d(${p2X * 1.3}px, ${p2Y * 1.3}px, 0)` }}
         >
-          <svg width="120" height="120" viewBox="0 0 120 120" fill="none" className="opacity-50">
+          <svg width="110" height="110" viewBox="0 0 120 120" fill="none" className="opacity-45">
             <rect
               x="60"
               y="15"
@@ -212,9 +210,10 @@ export default function Login() {
         </div>
       </header>
 
-      {/* 3. Main Content (Distraction-Free, Let Background Breathe) */}
-      <main className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-8 py-12 sm:py-20 my-auto">
-        <div className="max-w-2xl flex flex-col items-start">
+      {/* 3. Main Content (Left-aligned with header logo, floating login card on right, generous central negative space) */}
+      <main className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-8 py-10 sm:py-16 my-auto flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-16">
+        {/* Left Side: Hero Content (Perfect vertical alignment with header logo) */}
+        <div className="w-full max-w-xl lg:max-w-[520px] xl:max-w-[560px] flex flex-col items-start">
           {/* Headline */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold tracking-tight text-white leading-[1.15]">
             Stay on top of your{" "}
@@ -228,52 +227,49 @@ export default function Login() {
             and stay on track throughout the semester.
           </p>
 
-          {/* Feature List (3 bullet points with clean vector icons) */}
-          <div className="mt-8 flex flex-col gap-3.5 w-full max-w-lg">
+          {/* Feature List (Clean plain text paired with yellow vector icons - No bounding boxes) */}
+          <div className="mt-8 flex flex-col gap-4">
             {/* Feature 1 */}
-            <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-[#12141C] border border-[#212533]">
-              <div className="w-9 h-9 rounded-lg bg-[#191D28] flex items-center justify-center shrink-0 border border-[#2B3244]">
-                <ListChecks className="w-4 h-4 text-brand-yellow" strokeWidth={2.25} />
-              </div>
-              <p className="text-sm font-semibold text-white/90">
+            <div className="flex items-center gap-3.5">
+              <ListChecks className="w-5 h-5 text-brand-yellow shrink-0" strokeWidth={2.25} />
+              <p className="text-sm font-medium text-gray-200">
                 Track your deliverables and deadlines
               </p>
             </div>
 
             {/* Feature 2 */}
-            <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-[#12141C] border border-[#212533]">
-              <div className="w-9 h-9 rounded-lg bg-[#191D28] flex items-center justify-center shrink-0 border border-[#2B3244]">
-                <TrendingUp className="w-4 h-4 text-brand-yellow" strokeWidth={2.25} />
-              </div>
-              <p className="text-sm font-semibold text-white/90">
+            <div className="flex items-center gap-3.5">
+              <TrendingUp className="w-5 h-5 text-brand-yellow shrink-0" strokeWidth={2.25} />
+              <p className="text-sm font-medium text-gray-200">
                 Monitor personal quiz scores
               </p>
             </div>
 
             {/* Feature 3 */}
-            <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-[#12141C] border border-[#212533]">
-              <div className="w-9 h-9 rounded-lg bg-[#191D28] flex items-center justify-center shrink-0 border border-[#2B3244]">
-                <Users className="w-4 h-4 text-brand-yellow" strokeWidth={2.25} />
-              </div>
-              <p className="text-sm font-semibold text-white/90">
+            <div className="flex items-center gap-3.5">
+              <Users className="w-5 h-5 text-brand-yellow shrink-0" strokeWidth={2.25} />
+              <p className="text-sm font-medium text-gray-200">
                 Browse topics across other teams
               </p>
             </div>
           </div>
+        </div>
 
-          {/* 4. The Single Call-to-Action (CTA): ONLY clickable entry point */}
-          <div className="mt-10">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center justify-center gap-3 px-9 py-4 rounded-xl bg-brand-yellow text-brand-black text-base font-bold shadow-lg hover:bg-brand-yellow-dark hover:shadow-yellow-400/20 active:scale-95 transition-all duration-200 cursor-pointer group"
-            >
-              <span>Get Started</span>
-              <ArrowRight
-                className="w-5 h-5 text-brand-black group-hover:translate-x-1 transition-transform"
-                strokeWidth={2.5}
-              />
-            </button>
+        {/* Right Side: Elevated Floating Card anchored to the right */}
+        <div className="w-full max-w-md lg:max-w-[420px] shrink-0">
+          <div className="bg-white rounded-2xl p-7 sm:p-8 border border-surface-border/80 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.95),0_40px_120px_-20px_rgba(0,0,0,0.9),0_0_60px_rgba(0,0,0,0.6)] text-gray-900 select-text">
+            {/* Form Header */}
+            <div className="mb-6">
+              <h2 className="text-2xl sm:text-3xl font-display font-bold text-gray-900 tracking-tight">
+                Welcome back
+              </h2>
+              <p className="mt-2 text-sm text-gray-500 leading-normal">
+                Log in with your account details to view project progress.
+              </p>
+            </div>
+
+            {/* Permanent Login Form */}
+            <LoginForm />
           </div>
         </div>
       </main>
@@ -283,9 +279,6 @@ export default function Login() {
         <p>ESQ38 - Technopreneurship - Cebu Institute of Technology - University</p>
         <p>A.Y. 2026-2027</p>
       </footer>
-
-      {/* 5. The Login Modal (Solid White Card with 3D Lift, Strictly No Glassmorphism) */}
-      <LoginModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }

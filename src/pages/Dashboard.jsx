@@ -59,8 +59,8 @@ export default function Dashboard() {
       const [projectData, count, groupDeliverables, progress, projectNotes] = await Promise.all([
         getProjectByGroupCode(student.groupCode),
         getProjectMemberCount(student.groupCode),
-        getGroupDeliverables(student.groupCode),
-        getGroupSubmissionProgress(student.groupCode),
+        getGroupDeliverables(student),
+        getGroupSubmissionProgress(student),
         getProjectNotes(student.groupCode),
       ]);
 
