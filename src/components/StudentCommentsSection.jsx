@@ -3,11 +3,11 @@ import {
   MessageSquareQuote,
   MessageSquare,
   Star,
-  Loader2,
   RotateCcw,
   Users2,
   User,
 } from "lucide-react";
+import LoadingSpinner from "./LoadingSpinner";
 import { getGroupComments, getIndividualComments, getRatings } from "../services/projectService";
 
 // ---------------------------------------------------------------------------
@@ -230,9 +230,8 @@ export default function StudentCommentsSection({ groupCode, studentNo, className
         </div>
 
         {loadingRatings ? (
-          <div className="flex items-center gap-2 text-sm text-brand-black/40 py-3">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Loading ratings...
+          <div className="flex items-center gap-2.5 text-sm text-brand-black/60 py-3">
+            <LoadingSpinner size="sm" text="Loading ratings..." />
           </div>
         ) : errorRatings ? (
           <div className="flex items-center justify-between gap-2">
@@ -293,9 +292,8 @@ export default function StudentCommentsSection({ groupCode, studentNo, className
           />
 
           {loadingGroup ? (
-            <div className="flex items-center gap-2 text-sm text-brand-black/40 py-3">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Loading group comments...
+            <div className="flex items-center gap-2.5 text-sm text-brand-black/60 py-3">
+              <LoadingSpinner size="sm" text="Loading group comments..." />
             </div>
           ) : errorGroup ? (
             <div className="flex items-center justify-between gap-2">
@@ -329,9 +327,8 @@ export default function StudentCommentsSection({ groupCode, studentNo, className
           />
 
           {loadingIndividual ? (
-            <div className="flex items-center gap-2 text-sm text-brand-black/40 py-3">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Loading individual comments...
+            <div className="flex items-center gap-2.5 text-sm text-brand-black/60 py-3">
+              <LoadingSpinner size="sm" text="Loading individual comments..." />
             </div>
           ) : errorIndividual ? (
             <div className="flex items-center justify-between gap-2">

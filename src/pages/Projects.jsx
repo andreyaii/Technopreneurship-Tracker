@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Loader2, FolderKanban } from "lucide-react";
+import { Search, FolderKanban } from "lucide-react";
+import LoadingSpinner from "../components/LoadingSpinner";
 import { getAllProjects } from "../services/projectService";
 import ProjectCard from "../components/ProjectCard";
 import { useAuth } from "../context/AuthContext";
@@ -57,9 +58,8 @@ export default function Projects() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-24 text-brand-black/40 gap-2">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm">Loading projects...</span>
+        <div className="flex items-center justify-center py-24 text-brand-black/60">
+          <LoadingSpinner size="md" text="Loading projects..." />
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center gap-3">

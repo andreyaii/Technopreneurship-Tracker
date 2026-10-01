@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { IdCard, KeyRound, LogIn, AlertCircle, Loader2 } from "lucide-react";
+import { IdCard, KeyRound, LogIn, AlertCircle } from "lucide-react";
+import LoadingSpinner from "./LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
 import RoleSelector from "./RoleSelector";
 
@@ -105,10 +106,10 @@ export default function LoginForm() {
         className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-brand-yellow text-brand-black text-sm font-bold hover:bg-brand-yellow-dark active:scale-[0.99] transition-all duration-200 shadow-md hover:shadow-brand-yellow/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
       >
         {isLoading ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin text-brand-black" />
+          <span className="flex items-center justify-center gap-2">
+            <LoadingSpinner size="sm" color="dark" inline />
             <span>Signing in...</span>
-          </>
+          </span>
         ) : (
           <>
             <LogIn className="w-4 h-4 text-brand-black" strokeWidth={2.5} />

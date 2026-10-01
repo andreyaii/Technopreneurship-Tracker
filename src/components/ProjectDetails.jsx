@@ -2,6 +2,7 @@ import { useAuth } from "../context/AuthContext";
 import { Users, TrendingUp } from "lucide-react";
 import ProgressCard from "./ProgressCard";
 import CourseDeliverables from "./CourseDeliverables";
+import AdviserGroupDeliverables from "./AdviserGroupDeliverables";
 import StudentCommentsSection from "./StudentCommentsSection";
 import AdviserCommentForm from "./AdviserCommentForm";
 
@@ -48,16 +49,29 @@ export default function ProjectDetails({
         </div>
       </div>
 
-      <CourseDeliverables deliverables={deliverables} title="Group Deliverables" />
-
+      {isAdviser ? (
+        <AdviserGroupDeliverables
+          deliverables={deliverables}
+          title="Group Deliverables"
+        />
+      ) : (
+        <CourseDeliverables
+          deliverables={deliverables}
+          title="Group Deliverables"
+        />
+      )}
       <section className="rounded-2xl border border-surface-border bg-white p-5 sm:p-6 shadow-card">
         <div className="flex items-center gap-2 mb-4">
           <Users className="w-4 h-4" />
           <h2 className="text-sm font-semibold uppercase tracking-wide">
-            {isAdviser ? "Advisee Members" : "Project Members"}
+            {isAdviser ? "Group Members" : "Project Members"}
           </h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {/* <p className="text-red-500">
+            Members received: {members.length}
+          </p> */}
+
           {members.map((member) => (
             <div
               key={member.studentNo}

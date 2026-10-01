@@ -7,9 +7,9 @@ import {
   Send,
   CheckCircle2,
   AlertCircle,
-  Loader2,
   ChevronDown,
 } from "lucide-react";
+import LoadingSpinner from "./LoadingSpinner";
 import {
   getGroupMembers,
   addGroupComment,
@@ -106,8 +106,7 @@ function CommentHistoryList({ comments, loading, error, emptyMsg }) {
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-brand-black/40 py-2">
-        <Loader2 className="w-4 h-4 animate-spin" />
-        Loading...
+        <LoadingSpinner size="sm" text="Loading..." />
       </div>
     );
   }
@@ -375,8 +374,7 @@ export default function AdviserCommentForm({ groupCode, groupLabel }) {
               <div className="relative">
                 {loadingMembers ? (
                   <div className="flex items-center gap-2 text-sm text-brand-black/40 px-3 py-2.5">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Loading members...
+                    <LoadingSpinner size="sm" text="Loading members..." />
                   </div>
                 ) : (
                   <>
@@ -461,7 +459,7 @@ export default function AdviserCommentForm({ groupCode, groupLabel }) {
           >
             {submitting ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <LoadingSpinner size="sm" color="white" inline />
                 Submitting...
               </>
             ) : (
@@ -589,7 +587,7 @@ export default function AdviserCommentForm({ groupCode, groupLabel }) {
           >
             {submittingRating ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <LoadingSpinner size="sm" color="white" inline />
                 Submitting...
               </>
             ) : (

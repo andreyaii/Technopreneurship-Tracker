@@ -130,15 +130,61 @@ export async function getStudentGroupCode(studentNo) {
   return resolveAsync(student?.groupCode);
 }
 
-export async function getGroupDeliverables(student) {
-  if (!student) return [];
-  return resolveAsync(student.deliverables || []);
+export async function getGroupDeliverables(groupCodeInput) {
+  try {
+    const groupCode =
+      typeof groupCodeInput === "object"
+        ? groupCodeInput?.groupCode
+        : groupCodeInput;
+
+    if (!groupCode) return [];
+
+    const data = await postAction({
+      action: "getGroupDeliverables",
+      groupCode,
+    });
+
+    if (!data.success || !Array.isArray(data.data)) {
+      console.error("getGroupDeliverables failed:", data?.message);
+      return [];
+    }
+
+    return data.data;
+  } catch (err) {
+    console.error("getGroupDeliverables error:", err);
+    return [];
+  }
 }
 
-export async function getGroupSubmissionProgress(student) {
-  const rows = await getGroupDeliverables(student);
+export async function getGroupSubmissionProgress(studentOrGroupCode) {
+  const groupCode =
+    typeof studentOrGroupCode === "object"
+      ? studentOrGroupCode?.groupCode
+      : studentOrGroupCode;
+
+  if (!groupCode) return 0;
+
+  try {
+    const data = await postAction({
+      action: "getGroupProgress",
+      groupCode,
+    });
+
+    if (data.success && typeof data.progress === "number") {
+      return data.progress;
+    }
+  } catch (err) {
+    console.error("getGroupSubmissionProgress API error:", err);
+  }
+
+  const rows = await getGroupDeliverables(groupCode);
+
   if (!rows.length) return 0;
-  const submitted = rows.filter((r) => r.status === "Submitted").length;
+
+  const submitted = rows.filter(
+    (r) => r.status === "Submitted" || r.isSubmitted === true
+  ).length;
+
   return Math.round((submitted / rows.length) * 100);
 }
 
@@ -184,10 +230,24 @@ export async function getGroupMembers(groupCode) {
 // ---------------------------------------------------------------------------
 
 export async function getProjectMembers(groupCode) {
-  const members = students
-    .filter((s) => s.groupCode === groupCode)
-    .map(({ studentNo, name }) => ({ studentNo, name }));
-  return resolveAsync(members);
+  try {
+    const data = await postAction({
+      action: "getGroupMembers",
+      groupCode,
+    });
+
+    if (!data.success || !Array.isArray(data.data)) {
+      return [];
+    }
+
+    return data.data.map((member) => ({
+      studentNo: member.studentNo,
+      name: member.name,
+    }));
+  } catch (err) {
+    console.error("getProjectMembers error:", err);
+    return [];
+  }
 }
 
 export async function getProjectMemberCount(groupCode) {
@@ -196,7 +256,22 @@ export async function getProjectMemberCount(groupCode) {
 }
 
 export async function getProjectOverallProgress(groupCode) {
-  return getGroupSubmissionProgress(groupCode);
+  try {
+    const data = await postAction({
+      action: "getGroupProgress",
+      groupCode,
+    });
+
+    if (!data.success) {
+      console.error("getGroupProgress failed:", data.message);
+      return 0;
+    }
+
+    return Number(data.progress || 0);
+  } catch (err) {
+    console.error("getProjectOverallProgress error:", err);
+    return 0;
+  }
 }
 
 export async function getProjectRequirementsOverview(groupCode) {
@@ -230,8 +305,24 @@ export async function getProjectRequirementsOverview(groupCode) {
 }
 
 export async function getProjectByGroupCode(groupCode) {
-  const project = projects.find((p) => p.groupCode === groupCode);
-  return resolveAsync(project ? { ...project } : undefined);
+  try {
+    const data = await postAction({
+      action: "getGroups",
+    });
+
+    if (!data.success || !Array.isArray(data.data)) {
+      return undefined;
+    }
+
+    const project = data.data.find(
+      (item) => item.groupCode === groupCode
+    );
+
+    return project || undefined;
+  } catch (err) {
+    console.error("getProjectByGroupCode error:", err);
+    return undefined;
+  }
 }
 
 /**
@@ -254,20 +345,22 @@ export async function saveStudentComment(groupCode) {
 }
 
 export async function getAllProjects() {
-  const enriched = await Promise.all(
-    projects.map(async (project) => {
-      const memberCount = await getProjectMemberCount(project.groupCode);
-      const progress = await getProjectOverallProgress(project.groupCode);
-      return {
-        groupCode: project.groupCode,
-        title: project.title,
-        description: project.description,
-        memberCount,
-        progress,
-      };
-    })
-  );
-  return resolveAsync(enriched);
+  try {
+    const data = await postAction({
+      action: "getGroups",
+    });
+
+    console.log("getGroups response:", data);
+
+    if (!data.success) {
+      throw new Error(data.message || "Failed to load groups.");
+    }
+
+    return Array.isArray(data.data) ? data.data : [];
+  } catch (err) {
+    console.error("getAllProjects error:", err);
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------

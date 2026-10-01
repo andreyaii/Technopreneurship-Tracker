@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
-import { ArrowLeft, Loader2, SearchX } from "lucide-react";
+import { ArrowLeft, SearchX } from "lucide-react";
+import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
 import {
   getProjectByGroupCode,
@@ -28,8 +29,10 @@ export default function ProjectDetailsPage() {
   const [notFound, setNotFound] = useState(false);
 
   const isAdviser = student?.role === "adviser";
+
   const isOwnGroup = Boolean(
-    isAdviser || (student?.groupCode && student.groupCode === groupCode)
+    isAdviser ||
+    (student?.groupCode && student.groupCode === groupCode)
   );
 
   useEffect(() => {
@@ -42,6 +45,7 @@ export default function ProjectDetailsPage() {
       setNotFound(false);
 
       const projectData = await getProjectByGroupCode(groupCode);
+
       if (!projectData) {
         if (isCurrent) {
           setNotFound(true);
@@ -50,26 +54,57 @@ export default function ProjectDetailsPage() {
         return;
       }
 
-      const [count, groupDeliverables, progress, projectMembers] = await Promise.all([
-        getProjectMemberCount(groupCode),
-        getGroupDeliverables(groupCode),
-        getProjectOverallProgress(groupCode),
-        getProjectMembers(groupCode),
-      ]);
+      const [count, progress, projectMembers] =
+        await Promise.all([
+          getProjectMemberCount(groupCode),
+          getProjectOverallProgress(groupCode),
+          getProjectMembers(groupCode),
+        ]);
+
+      let projectDeliverables = [];
+
+      if (isAdviser) {
+        // Advisers see group-level submission counts and completion dates.
+        projectDeliverables =
+          await getGroupDeliverables(groupCode);
+      } else {
+        // Students see their own individual deliverables.
+        console.log("CURRENT STUDENT:", student);
+        console.log(
+          "CURRENT STUDENT DELIVERABLES:",
+          student?.deliverables
+        );
+
+        projectDeliverables = student?.deliverables || [];
+      }
 
       if (!isCurrent) return;
-      setProject({ ...projectData, progress });
+
+      setProject({
+        ...projectData,
+        progress,
+      });
+
       setMemberCount(count);
+
+      console.log("Project members:", projectMembers);
       setMembers(projectMembers);
-      setDeliverables(groupDeliverables);
+
+      setDeliverables(projectDeliverables);
       setIsLoading(false);
     }
 
     loadDetails();
+
     return () => {
       isCurrent = false;
     };
-  }, [groupCode, isOwnGroup]);
+  }, [
+    groupCode,
+    isOwnGroup,
+    isAdviser,
+    student?.deliverables,
+  ]);
 
   if (student && !isOwnGroup) {
     return <Navigate to="/projects" replace />;
@@ -81,20 +116,26 @@ export default function ProjectDetailsPage() {
         to={isAdviser ? "/projects" : "/dashboard"}
         className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-black/60 hover:text-brand-black transition-colors w-fit"
       >
-        <ArrowLeft className="w-4 h-4" strokeWidth={2.25} />
+        <ArrowLeft
+          className="w-4 h-4"
+          strokeWidth={2.25}
+        />
         Back to Dashboard
       </Link>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-24 text-brand-black/40 gap-2">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm">Loading project details...</span>
+        <div className="flex items-center justify-center py-24 text-brand-black/60">
+          <LoadingSpinner
+            size="md"
+            text="Loading project details..."
+          />
         </div>
       ) : notFound ? (
         <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
           <div className="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center">
             <SearchX className="w-5 h-5 text-brand-black/40" />
           </div>
+
           <p className="text-sm text-brand-black/50">
             No project found for your group.
           </p>

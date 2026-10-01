@@ -4,11 +4,11 @@ import {
   MessageSquare,
   CheckCircle2,
   AlertCircle,
-  Loader2,
   Send,
   Sparkles,
   RotateCcw,
 } from "lucide-react";
+import LoadingSpinner from "./LoadingSpinner";
 import { saveAdviserFeedback } from "../services/projectService";
 
 export default function MentorCommentsCard({
@@ -160,7 +160,7 @@ export default function MentorCommentsCard({
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <LoadingSpinner size="sm" color="white" inline />
                   <span>Submitting comment...</span>
                 </>
               ) : submitStatus === "success" ? (

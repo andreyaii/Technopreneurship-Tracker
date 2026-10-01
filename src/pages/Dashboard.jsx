@@ -6,8 +6,8 @@ import {
   BookOpen,
   GraduationCap,
   TrendingUp,
-  Loader2,
 } from "lucide-react";
+import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
 import {
   getProjectByGroupCode,
@@ -57,15 +57,25 @@ export default function Dashboard() {
       const [projectData, count, groupDeliverables, progress] = await Promise.all([
         getProjectByGroupCode(student.groupCode),
         getProjectMemberCount(student.groupCode),
-        getGroupDeliverables(student),
-        getGroupSubmissionProgress(student),
+        getGroupDeliverables(student.groupCode),
+        getGroupSubmissionProgress(student.groupCode),
       ]);
+
+      const userDeliverables =
+        student?.deliverables && student.deliverables.length > 0
+          ? student.deliverables
+          : groupDeliverables;
+
+      const userProgress =
+        typeof student?.progress === "number" && student.progress > 0
+          ? student.progress
+          : progress;
 
       if (!isCurrent) return;
       setProject(projectData);
       setMemberCount(count);
-      setDeliverables(groupDeliverables);
-      setOverallProgress(progress);
+      setDeliverables(userDeliverables);
+      setOverallProgress(userProgress);
       setIsLoading(false);
     }
 
@@ -91,9 +101,8 @@ export default function Dashboard() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-24 text-brand-black/40 gap-2">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm">Loading your dashboard...</span>
+        <div className="flex items-center justify-center py-24 text-brand-black/60">
+          <LoadingSpinner size="md" text="Loading your dashboard..." />
         </div>
       ) : (
         <>
@@ -138,7 +147,7 @@ export default function Dashboard() {
             </div>
 
             <ProgressCard
-              label="Group Progress"
+              label="My Progress"
               value={overallProgress}
               icon={TrendingUp}
               hint="Share of your group's deliverables that are submitted"

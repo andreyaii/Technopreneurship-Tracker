@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import LoadingSpinner from "./LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "./Navbar";
 
@@ -19,9 +19,8 @@ export default function ProtectedRoute({ children, requiredRole }) {
 
   if (isRestoring) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-muted text-brand-black/40 gap-2">
-        <Loader2 className="w-5 h-5 animate-spin" />
-        <span className="text-sm">Loading...</span>
+      <div className="min-h-screen flex items-center justify-center bg-[#111111] text-white">
+        <LoadingSpinner size="lg" text="Loading..." color="brand" />
       </div>
     );
   }

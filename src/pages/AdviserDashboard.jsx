@@ -3,10 +3,10 @@ import {
   Users2,
   ShieldCheck,
   FolderKanban,
-  Loader2,
   ChevronDown,
   Search,
 } from "lucide-react";
+import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
 import { getAllProjects } from "../services/projectService";
 import AdviserCommentForm from "../components/AdviserCommentForm";
@@ -95,9 +95,8 @@ export default function AdviserDashboard() {
         </div>
 
         {loadingProjects ? (
-          <div className="flex items-center gap-2 text-sm text-brand-black/40 py-4">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Loading groups...
+          <div className="flex items-center gap-2.5 text-sm text-brand-black/60 py-4">
+            <LoadingSpinner size="sm" text="Loading groups..." inline={false} />
           </div>
         ) : (
           <div className="flex flex-col gap-4">
