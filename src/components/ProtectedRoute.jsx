@@ -5,13 +5,17 @@ import Navbar from "./Navbar";
 
 /**
  * ProtectedRoute
- * Redirects to /login if there is no authenticated student in context.
+ *
+ * Redirects to /login if there is no authenticated user.
  * Waits for `isRestoring` to finish first, so a page refresh doesn't
- * briefly bounce an already-logged-in student to /login before their
- * session has been restored from sessionStorage.
+ * briefly bounce an already-logged-in user to /login.
+ *
+ * If `requiredRole` is provided (e.g. "adviser"), also verifies that the
+ * authenticated user's role matches before rendering children.
+ * Students trying to reach /adviser are redirected to /dashboard.
  */
-export default function ProtectedRoute({ children }) {
-  const { isAuthenticated, isRestoring } = useAuth();
+export default function ProtectedRoute({ children, requiredRole }) {
+  const { student, isAuthenticated, isRestoring } = useAuth();
 
   if (isRestoring) {
     return (
@@ -24,6 +28,17 @@ export default function ProtectedRoute({ children }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Role-gating: redirect to appropriate default page for the wrong role
+  if (requiredRole && student?.role !== requiredRole) {
+    const fallback = student?.role === "adviser" ? "/adviser" : "/dashboard";
+    return <Navigate to={fallback} replace />;
+  }
+
+  // Redirect adviser away from the student-only dashboard
+  if (!requiredRole && student?.role === "adviser" && window.location.pathname === "/dashboard") {
+    return <Navigate to="/adviser" replace />;
   }
 
   return (

@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
+import AdviserDashboard from "./pages/AdviserDashboard";
 
 export default function App() {
   return (
@@ -18,6 +19,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/adviser"
+            element={
+              <ProtectedRoute requiredRole="adviser">
+                <AdviserDashboard />
               </ProtectedRoute>
             }
           />
@@ -41,8 +51,8 @@ export default function App() {
           />
 
           {/* Default: send everyone to login; ProtectedRoute + Login's own
-              redirect handle bouncing an already-authenticated student
-              straight to /dashboard. */}
+              redirect handle bouncing an already-authenticated user
+              straight to /dashboard or /adviser. */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

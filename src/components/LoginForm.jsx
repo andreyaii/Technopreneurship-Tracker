@@ -34,7 +34,7 @@ export default function LoginForm() {
 
     const result = await login(studentNo, pin, role);
     if (result.success) {
-      navigate(role === "adviser" ? "/projects" : "/dashboard");
+      navigate(role === "adviser" ? "/adviser" : "/dashboard");
     } else {
       setError(result.message || "Login failed. Please try again.");
     }

@@ -1,22 +1,25 @@
+import { useAuth } from "../context/AuthContext";
 import { Users, TrendingUp } from "lucide-react";
 import ProgressCard from "./ProgressCard";
 import CourseDeliverables from "./CourseDeliverables";
-import MentorCommentsCard from "./MentorCommentsCard";
+import StudentCommentsSection from "./StudentCommentsSection";
+import AdviserCommentForm from "./AdviserCommentForm";
 
 /**
- * Own-group project body: overview + group deliverables.
+ * Own-group project body: overview + group deliverables + comments.
  * Does not list teammate names or other groups' trackers.
+ *
+ * For students: shows read-only StudentCommentsSection (group + individual).
+ * For advisers: shows AdviserCommentForm (post feedback/rating workflow).
  */
 export default function ProjectDetails({
   project,
   memberCount,
   members,
   deliverables,
-  notes,
-  setNotes,
   isAdviser,
-  mentorName = "Engr. Jonathan A. Cartilla",
 }) {
+  const { student } = useAuth();
   const { title, description, progress } = project;
 
   return (
@@ -67,13 +70,17 @@ export default function ProjectDetails({
         </div>
       </section>
 
-      <MentorCommentsCard
-        notes={notes}
-        setNotes={setNotes}
-        groupCode={project.groupCode}
-        mentorName={mentorName}
-        isAdviser={isAdviser}
-      />
+      {isAdviser ? (
+        <AdviserCommentForm
+          groupCode={project.groupCode}
+          groupLabel={title}
+        />
+      ) : (
+        <StudentCommentsSection
+          groupCode={project.groupCode}
+          studentNo={student?.studentNo}
+        />
+      )}
     </div>
   );
 }

@@ -8,14 +8,13 @@ import {
   getGroupDeliverables,
   getProjectOverallProgress,
   getProjectMembers,
-  getProjectNotes,
 } from "../services/projectService";
 import ProjectDetails from "../components/ProjectDetails";
 
 /**
  * Own-group details only. Other group codes redirect away so students
  * cannot open another team's tracker via the URL.
- * Ready for Sheets auth: keep comparing params to student.groupCode.
+ * Advisers can access any group's project detail page.
  */
 export default function ProjectDetailsPage() {
   const { groupCode } = useParams();
@@ -24,13 +23,14 @@ export default function ProjectDetailsPage() {
   const [project, setProject] = useState(null);
   const [memberCount, setMemberCount] = useState(0);
   const [members, setMembers] = useState([]);
-  const [notes, setNotes] = useState({ studentComment: "", adviserFeedback: "" });
   const [deliverables, setDeliverables] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   const isAdviser = student?.role === "adviser";
-  const isOwnGroup = Boolean(isAdviser || (student?.groupCode && student.groupCode === groupCode));
+  const isOwnGroup = Boolean(
+    isAdviser || (student?.groupCode && student.groupCode === groupCode)
+  );
 
   useEffect(() => {
     if (!isOwnGroup) return;
@@ -50,19 +50,17 @@ export default function ProjectDetailsPage() {
         return;
       }
 
-      const [count, groupDeliverables, progress, projectMembers, projectNotes] = await Promise.all([
+      const [count, groupDeliverables, progress, projectMembers] = await Promise.all([
         getProjectMemberCount(groupCode),
         getGroupDeliverables(groupCode),
         getProjectOverallProgress(groupCode),
         getProjectMembers(groupCode),
-        getProjectNotes(groupCode),
       ]);
 
       if (!isCurrent) return;
       setProject({ ...projectData, progress });
       setMemberCount(count);
       setMembers(projectMembers);
-      setNotes(projectNotes);
       setDeliverables(groupDeliverables);
       setIsLoading(false);
     }
@@ -107,10 +105,7 @@ export default function ProjectDetailsPage() {
           memberCount={memberCount}
           members={members}
           deliverables={deliverables}
-          notes={notes}
-          setNotes={setNotes}
           isAdviser={isAdviser}
-          mentorName={project?.mentor || student?.mentor || "Engr. Jonathan A. Cartilla"}
         />
       )}
     </div>

@@ -4,150 +4,145 @@
  * Data-access layer. Pages and components ONLY talk to this file —
  * never to src/data/mockData.js or mockDeliverables.js directly.
  *
- * Today every function reads mock data. Later, swap each body for a
- * fetch() to a Google Apps Script Web App, keeping the same names and
- * return shapes. Authentication against Google Sheets is not wired yet;
- * `authenticateStudent` stays mock until that connection exists.
+ * All live data (students, advisers, comments, ratings) is fetched from
+ * Google Apps Script via the action-based postAction() helper in api.js.
+ * Mock data is only kept for the legacy Projects/AllProjects view that
+ * has not been connected to a real Sheets source yet.
  *
- * Student-facing data is always scoped by the logged-in student's
- * groupCode. Detail views (dashboard, group deliverables) must never
- * be loaded for another team.
- *
- *   React UI  ->  projectService.js  ->  [mock today | Apps Script later]
+ *   React UI  →  projectService.js  →  Apps Script  →  Google Sheets
  * ------------------------------------------------------------------
  */
 
 import {
-  students,
   projects,
+  students,
   studentRequirements,
   requirementDefs,
 } from "../data/mockData";
 
-const API_URL =
-  "https://script.google.com/macros/s/AKfycbw3-b781_EiXjAvJBsU6Knh5y_S4ABuaiLW2U0nKEolAm-y8YQ2m6qtafm-wHviIDAa/exec";
+import { postAction } from "./api";
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
 
 const resolveAsync = (value) => Promise.resolve(value);
-const adviser = { role: "adviser", name: "Adviser Demo", adviserNo: "adviser" };
-const projectNotes = {
-  "2526-sem2-it411-01": {
-    studentComment: "We are validating the first sensor readings with two farms.",
-    adviserFeedback: "Good momentum. Please include the validation results in the next update.",
-  },
-};
 
-
-function toPublicStudent(student) {
-  if (!student) return undefined;
-  const { pin: _omit, ...safeStudent } = student;
-  return { ...safeStudent, role: "student", mentor: student.mentor || student.instructor };
-}
-
+// ---------------------------------------------------------------------------
+// Authentication
+// ---------------------------------------------------------------------------
 
 /**
- * Look up a single student by student number (no PIN).
- */
-export async function getStudentByStudentNo(studentNo) {
-  const student = students.find((s) => s.studentNo === studentNo);
-  return resolveAsync(student ? toPublicStudent(student) : undefined);
-}
-
-/**
- * Resolves which group a student belongs to.
- * Future Sheets: look up the student row and read the Group Code column.
- * All private dashboards must use this group — never another team's code.
- */
-export async function getStudentGroupCode(studentNo) {
-  const student = await getStudentByStudentNo(studentNo);
-  return resolveAsync(student?.groupCode);
-}
-
-/**
- * Mock authentication: Student Number + 4-digit PIN.
- * Never returns the PIN. Replace this body with a Sheets/Apps Script
- * check when the database is connected — do not authenticate in the UI.
+ * Authenticate a student via Google Sheets.
+ * Returns a safe student object on success, null on failure.
+ * The PIN is never returned to the caller.
  */
 export async function authenticateStudent(studentNo, pin) {
   try {
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8",
-      },
-      body: JSON.stringify({
-        studentNo: studentNo.trim(),
-        pin: pin.trim(),
-      }),
+    const data = await postAction({
+      action: "loginStudent",
+      studentNo: studentNo.trim(),
+      pin: pin.trim(),
     });
-
-    const data = await response.json();
 
     if (!data.success || !data.student) {
       return null;
     }
 
-    const apiStudent = data.student;
+    const s = data.student;
 
     return {
       role: "student",
-
-      // Basic student information
-      studentNo: String(apiStudent.studentNo || ""),
-      name: String(apiStudent.name || ""),
-      section: String(apiStudent.section || ""),
-      groupCode: String(apiStudent.groupCode || ""),
-      mentor: String(apiStudent.mentor || ""),
-      program: String(apiStudent.program || ""),
-
-      // Tracker data from Google Sheets
-      deliverables: apiStudent.deliverables || [],
-      progress: apiStudent.progress || 0,
+      studentNo: String(s.studentNo || ""),
+      name: String(s.name || ""),
+      section: String(s.section || ""),
+      groupCode: String(s.groupCode || ""),
+      mentor: String(s.mentor || ""),
+      program: String(s.program || ""),
+      memberNo: s.memberNo !== undefined ? Number(s.memberNo) : null,
+      deliverables: s.deliverables || [],
+      progress: s.progress || 0,
     };
-  } catch (error) {
-    console.error("Student login error:", error);
+  } catch (err) {
+    console.error("Student login error:", err);
     return null;
   }
 }
 
+/**
+ * Authenticate an adviser via Google Sheets (Advisers sheet).
+ * Returns a safe adviser object on success, null on failure.
+ * The PIN is never returned to the caller.
+ */
 export async function authenticateAdviser(adviserNo, pin) {
-  return resolveAsync(adviserNo.trim().toLowerCase() === "adviser" && pin.trim() === "1234" ? adviser : null);
+  try {
+    const data = await postAction({
+      action: "loginAdviser",
+      adviserNo: adviserNo.trim(),
+      pin: pin.trim(),
+    });
+
+    if (!data.success || !data.adviser) {
+      return null;
+    }
+
+    const a = data.adviser;
+
+    return {
+      role: "adviser",
+      adviserNo: String(a.adviserNo || ""),
+      name: String(a.name || ""),
+      roleName: String(a.roleName || "adviser"),
+    };
+  } catch (err) {
+    console.error("Adviser login error:", err);
+    return null;
+  }
 }
 
 /**
- * Course deliverables for ONE group: Submitted or Missing only.
- * This is what the student dashboard should show after login.
+ * Look up a single student by student number (no PIN check).
+ * Used for session restoration. Falls back to mockData if the
+ * Sheets API is unavailable.
  */
-export async function getGroupDeliverables(student) {
-  if (!student) {
-    return [];
+export async function getStudentByStudentNo(studentNo) {
+  // Prefer mock data for session restore — avoids a network round-trip on
+  // every page refresh and keeps the existing mock-first prototype working.
+  // When all data is live, replace this with a real getStudent API call.
+  const student = students.find((s) => s.studentNo === studentNo);
+  if (student) {
+    const { pin: _omit, ...safe } = student;
+    return resolveAsync({
+      ...safe,
+      role: "student",
+      mentor: student.mentor || student.instructor,
+    });
   }
+  return resolveAsync(undefined);
+}
 
+// ---------------------------------------------------------------------------
+// Student / group data
+// ---------------------------------------------------------------------------
+
+export async function getStudentGroupCode(studentNo) {
+  const student = await getStudentByStudentNo(studentNo);
+  return resolveAsync(student?.groupCode);
+}
+
+export async function getGroupDeliverables(student) {
+  if (!student) return [];
   return resolveAsync(student.deliverables || []);
 }
 
-/**
- * Share of group deliverables that are Submitted (0–100).
- */
 export async function getGroupSubmissionProgress(student) {
   const rows = await getGroupDeliverables(student);
-
-  if (!rows.length) {
-    return 0;
-  }
-
-  const submitted = rows.filter(
-    (row) => row.status === "Submitted"
-  ).length;
-
-  return Math.round(
-    (submitted / rows.length) * 100
-  );
+  if (!rows.length) return 0;
+  const submitted = rows.filter((r) => r.status === "Submitted").length;
+  return Math.round((submitted / rows.length) * 100);
 }
 
-/**
- * Requirement rows for ONE student (legacy SDLC list).
- * Prefer getGroupDeliverables for the student dashboard.
- */
+/** Requirement rows for ONE student (legacy SDLC list). */
 export async function getStudentRequirements(studentNo) {
   const rows = studentRequirements.filter((r) => r.studentNo === studentNo);
   const ordered = requirementDefs.map((def) =>
@@ -163,10 +158,31 @@ export async function getStudentOverallProgress(studentNo) {
   return resolveAsync(Math.round((submitted / rows.length) * 100));
 }
 
+// ---------------------------------------------------------------------------
+// Group members — from Google Sheets via Apps Script
+// ---------------------------------------------------------------------------
+
 /**
- * Public member count helpers. Names are intentionally not attached to
- * All Projects cards. Detail UIs should not list other students' profiles.
+ * Returns an array of members for the given group.
+ * Shape: [{ studentNo, name, memberNo }]
  */
+export async function getGroupMembers(groupCode) {
+  try {
+    const data = await postAction({ action: "getGroupMembers", groupCode });
+    if (data.success && Array.isArray(data.data)) {
+      return data.data;
+    }
+    return [];
+  } catch (err) {
+    console.error("getGroupMembers error:", err);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Project (mock-backed, existing behaviour preserved)
+// ---------------------------------------------------------------------------
+
 export async function getProjectMembers(groupCode) {
   const members = students
     .filter((s) => s.groupCode === groupCode)
@@ -179,17 +195,10 @@ export async function getProjectMemberCount(groupCode) {
   return resolveAsync(members.length);
 }
 
-/**
- * Group-level overall progress from deliverable submissions — not grades.
- */
 export async function getProjectOverallProgress(groupCode) {
   return getGroupSubmissionProgress(groupCode);
 }
 
-/**
- * Team-level requirement overview (Submitted / Missing only).
- * Used only for the logged-in student's own group.
- */
 export async function getProjectRequirementsOverview(groupCode) {
   const members = await getProjectMembers(groupCode);
   const allRows = await Promise.all(
@@ -222,29 +231,28 @@ export async function getProjectRequirementsOverview(groupCode) {
 
 export async function getProjectByGroupCode(groupCode) {
   const project = projects.find((p) => p.groupCode === groupCode);
-  return resolveAsync(project ? { ...project, ...(projectNotes[groupCode] || {}) } : undefined);
-}
-
-export async function getProjectNotes(groupCode) {
-  return resolveAsync({ studentComment: "", adviserFeedback: "", ...(projectNotes[groupCode] || {}) });
-}
-
-export async function saveStudentComment(groupCode, studentComment) {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  projectNotes[groupCode] = { ...(projectNotes[groupCode] || {}), studentComment: studentComment.trim() };
-  return getProjectNotes(groupCode);
-}
-
-export async function saveAdviserFeedback(groupCode, adviserFeedback) {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  projectNotes[groupCode] = { ...(projectNotes[groupCode] || {}), adviserFeedback: adviserFeedback.trim() };
-  return getProjectNotes(groupCode);
+  return resolveAsync(project ? { ...project } : undefined);
 }
 
 /**
- * All Projects grid: title, description, member count, overall progress.
- * No member names, no per-requirement status.
+ * getProjectNotes is kept for backward compatibility.
+ * Returns an empty notes object — the Dashboard now uses the
+ * real comment/rating service functions below.
  */
+export async function getProjectNotes(/* groupCode */) {
+  return resolveAsync({ studentComment: "", adviserFeedback: "" });
+}
+
+/** @deprecated Use getGroupComments/addGroupComment instead. */
+export async function saveAdviserFeedback(/* groupCode, adviserFeedback */) {
+  return resolveAsync({ studentComment: "", adviserFeedback: "" });
+}
+
+/** @deprecated */
+export async function saveStudentComment(groupCode) {
+  return getProjectNotes(groupCode);
+}
+
 export async function getAllProjects() {
   const enriched = await Promise.all(
     projects.map(async (project) => {
@@ -260,4 +268,154 @@ export async function getAllProjects() {
     })
   );
   return resolveAsync(enriched);
+}
+
+// ---------------------------------------------------------------------------
+// Comments — Group Comments (GroupComments sheet)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch all comments for a group.
+ * Returns: [{ group, adviser, comment, timestamp }]
+ */
+export async function getGroupComments(groupCode) {
+  try {
+    const data = await postAction({ action: "getGroupComments", groupCode });
+    if (data.success && Array.isArray(data.data)) {
+      return data.data;
+    }
+    return [];
+  } catch (err) {
+    console.error("getGroupComments error:", err);
+    return [];
+  }
+}
+
+/**
+ * Add a group comment.
+ * @param {string} groupCode
+ * @param {string} adviserName - comes from AuthContext, never manually entered
+ * @param {string} comment
+ */
+export async function addGroupComment(groupCode, adviserName, comment, adviserId) {
+  const trimmed = comment.trim();
+  if (!trimmed) throw new Error("Comment cannot be empty.");
+  const data = await postAction({
+    action: "addGroupComment",
+    groupCode,
+    adviser: adviserName,
+    adviserId: adviserId || adviserName,
+    comment: trimmed,
+  });
+  if (!data.success) {
+    throw new Error(data.message || "Failed to save group comment.");
+  }
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// Comments — Individual Comments (IndividualComments sheet)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch individual comments for ONE specific student.
+ * The Apps Script filters by studentNo server-side.
+ * Students NEVER see another student's individual comments.
+ *
+ * @param {string} studentNo
+ */
+export async function getIndividualComments(studentNo) {
+  try {
+    const data = await postAction({ action: "getIndividualComments", studentNo });
+    if (data.success && Array.isArray(data.data)) {
+      return data.data;
+    }
+    return [];
+  } catch (err) {
+    console.error("getIndividualComments error:", err);
+    return [];
+  }
+}
+
+/**
+ * Add an individual comment.
+ * @param {{ studentNo, name, groupCode }} student - from selected member record
+ * @param {string} adviserName - from AuthContext
+ * @param {string} comment
+ * @param {string} [adviserId] - optional adviser account ID
+ */
+export async function addIndividualComment(student, adviserName, comment, adviserId) {
+  const trimmed = comment.trim();
+  if (!trimmed) throw new Error("Comment cannot be empty.");
+  const data = await postAction({
+    action: "addIndividualComment",
+    studentNo: student.studentNo,
+    group: student.groupCode,
+    studentName: student.name,
+    adviser: adviserName,
+    adviserId: adviserId || adviserName,
+    comment: trimmed,
+  });
+  if (!data.success) {
+    throw new Error(data.message || "Failed to save individual comment.");
+  }
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// Ratings (Ratings sheet)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch ratings for a group and/or individual student.
+ * Adviser can call with groupCode only; student should provide both.
+ *
+ * Returns: { groupRating: { rating, adviser, timestamp } | null,
+ *            individualRating: { rating, adviser, timestamp } | null }
+ */
+export async function getRatings(groupCode, studentNo) {
+  try {
+    const data = await postAction({
+      action: "getRatings",
+      groupCode,
+      studentNo: studentNo || "",
+    });
+    if (data.success) {
+      return data.data || { groupRating: null, individualRating: null };
+    }
+    return { groupRating: null, individualRating: null };
+  } catch (err) {
+    console.error("getRatings error:", err);
+    return { groupRating: null, individualRating: null };
+  }
+}
+
+/**
+ * Add a rating.
+ * @param {"Group"|"Individual"} targetType
+ * @param {string} groupCode
+ * @param {{ studentNo, name } | null} studentRecord - required for Individual
+ * @param {string} adviserName - from AuthContext
+ * @param {number} rating - integer 1-5
+ * @param {string} [adviserId] - optional adviser account ID
+ */
+export async function addRating(targetType, groupCode, studentRecord, adviserName, rating, adviserId) {
+  const ratingNum = Number(rating);
+  if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+    throw new Error("Rating must be an integer between 1 and 5.");
+  }
+  const data = await postAction({
+    action: "addRating",
+    targetType,
+    groupCode,
+    studentNo: studentRecord?.studentNo || "",
+    studentName: studentRecord?.name || "",
+    adviser: adviserName,
+    adviserId: adviserId || adviserName,
+    rating: ratingNum,
+  });
+  if (!data.success) {
+    throw new Error(data.message || "Failed to save rating.");
+  }
+  return data;
 }

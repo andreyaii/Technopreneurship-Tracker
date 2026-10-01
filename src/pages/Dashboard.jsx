@@ -14,11 +14,10 @@ import {
   getProjectMemberCount,
   getGroupDeliverables,
   getGroupSubmissionProgress,
-  getProjectNotes,
 } from "../services/projectService";
 import ProgressCard from "../components/ProgressCard";
 import CourseDeliverables from "../components/CourseDeliverables";
-import MentorCommentsCard from "../components/MentorCommentsCard";
+import StudentCommentsSection from "../components/StudentCommentsSection";
 
 function InfoTile({ icon: Icon, label, value, className = "" }) {
   return (
@@ -38,15 +37,14 @@ function InfoTile({ icon: Icon, label, value, className = "" }) {
 
 export default function Dashboard() {
   // Scoped to the logged-in student's group only. Other teams' deliverables
-  // are never fetched here. When Google Sheets auth lands, keep using
-  // student.groupCode from AuthContext — not a URL parameter.
+  // are never fetched here. Keep using student.groupCode from AuthContext —
+  // never a URL parameter.
   const { student } = useAuth();
 
   const [project, setProject] = useState(null);
   const [memberCount, setMemberCount] = useState(0);
   const [deliverables, setDeliverables] = useState([]);
   const [overallProgress, setOverallProgress] = useState(0);
-  const [notes, setNotes] = useState({ studentComment: "", adviserFeedback: "" });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -56,12 +54,11 @@ export default function Dashboard() {
 
     async function loadDashboardData() {
       setIsLoading(true);
-      const [projectData, count, groupDeliverables, progress, projectNotes] = await Promise.all([
+      const [projectData, count, groupDeliverables, progress] = await Promise.all([
         getProjectByGroupCode(student.groupCode),
         getProjectMemberCount(student.groupCode),
         getGroupDeliverables(student),
         getGroupSubmissionProgress(student),
-        getProjectNotes(student.groupCode),
       ]);
 
       if (!isCurrent) return;
@@ -69,7 +66,6 @@ export default function Dashboard() {
       setMemberCount(count);
       setDeliverables(groupDeliverables);
       setOverallProgress(progress);
-      setNotes(projectNotes);
       setIsLoading(false);
     }
 
@@ -109,7 +105,7 @@ export default function Dashboard() {
               <InfoTile icon={IdCard} label="Full Name" value={student.name} />
               <InfoTile icon={Hash} label="Student Number" value={student.studentNo} />
               <InfoTile icon={BookOpen} label="Section" value={student.section} />
-              <InfoTile icon={GraduationCap} label="Mentor" value={student.mentor || "Engr. Jonathan A. Cartilla"} />
+              <InfoTile icon={GraduationCap} label="Mentor" value={student.mentor || "—"} />
               <InfoTile icon={Users2} label="Your Group" value={student.groupCode} />
             </div>
           </section>
@@ -156,12 +152,12 @@ export default function Dashboard() {
             />
           </section>
 
-          <MentorCommentsCard
-            notes={notes}
-            setNotes={setNotes}
+          {/* Real comments and ratings from Google Sheets — separated into
+              Group Comments and Individual Comments sections. Individual
+              comments are scoped to this student's studentNo server-side. */}
+          <StudentCommentsSection
             groupCode={student.groupCode}
-            mentorName={student.mentor || "Engr. Jonathan A. Cartilla"}
-            isAdviser={false}
+            studentNo={student.studentNo}
           />
         </>
       )}
