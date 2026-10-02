@@ -276,7 +276,7 @@ export default function Login() {
 
       {/* 2. Footer (Simplified & Minimal) */}
       <footer className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-8 py-6 border-t border-[#181A24] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-        <p>ESQ38 - Technopreneurship - Cebu Institute of Technology - University</p>
+        <p>ES038 - Technopreneurship - Cebu Institute of Technology - University</p>
         <p>A.Y. 2026-2027</p>
       </footer>
     </div>

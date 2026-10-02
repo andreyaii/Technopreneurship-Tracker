@@ -6,12 +6,13 @@ import {
   BookOpen,
   GraduationCap,
   TrendingUp,
+  ChevronDown,
 } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
 import {
   getProjectByGroupCode,
-  getProjectMemberCount,
+  getGroupMembers,
   getGroupDeliverables,
   getGroupSubmissionProgress,
 } from "../services/projectService";
@@ -42,7 +43,8 @@ export default function Dashboard() {
   const { student } = useAuth();
 
   const [project, setProject] = useState(null);
-  const [memberCount, setMemberCount] = useState(0);
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [showGroupMembers, setShowGroupMembers] = useState(false);
   const [deliverables, setDeliverables] = useState([]);
   const [overallProgress, setOverallProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,9 +56,9 @@ export default function Dashboard() {
 
     async function loadDashboardData() {
       setIsLoading(true);
-      const [projectData, count, groupDeliverables, progress] = await Promise.all([
+      const [projectData, members, groupDeliverables, progress] = await Promise.all([
         getProjectByGroupCode(student.groupCode),
-        getProjectMemberCount(student.groupCode),
+        getGroupMembers(student.groupCode),
         getGroupDeliverables(student.groupCode),
         getGroupSubmissionProgress(student.groupCode),
       ]);
@@ -73,7 +75,8 @@ export default function Dashboard() {
 
       if (!isCurrent) return;
       setProject(projectData);
-      setMemberCount(count);
+      setGroupMembers(members);
+      setShowGroupMembers(false);
       setDeliverables(userDeliverables);
       setOverallProgress(userProgress);
       setIsLoading(false);
@@ -133,11 +136,50 @@ export default function Dashboard() {
                   </p>
 
                   <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-brand-black/60">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1">
+                    <button
+                      type="button"
+                      aria-expanded={showGroupMembers}
+                      aria-controls="student-group-members"
+                      onClick={() => setShowGroupMembers((visible) => !visible)}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 transition-colors hover:bg-brand-yellow-soft focus-visible:outline-brand-black"
+                    >
                       <Users2 className="w-3 h-3" />
-                      {memberCount} members
-                    </span>
+                      {groupMembers.length}{" "}
+                      {groupMembers.length === 1 ? "member" : "members"}
+                      <ChevronDown
+                        className={`h-3 w-3 transition-transform ${
+                          showGroupMembers ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
                   </div>
+
+                  {showGroupMembers && (
+                    <div
+                      id="student-group-members"
+                      className="mt-4 rounded-xl border border-surface-border bg-surface-muted/50 p-4"
+                    >
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-brand-black/60">
+                        Group Members ({groupMembers.length})
+                      </h4>
+                      {groupMembers.length > 0 ? (
+                        <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {groupMembers.map((member) => (
+                            <li
+                              key={member.studentNo}
+                              className="rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-brand-black"
+                            >
+                              {member.name}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-2 text-sm text-brand-black/50">
+                          No members were found for this group.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </>
               ) : (
                 <p className="text-sm text-brand-black/50">
