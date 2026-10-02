@@ -10,6 +10,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
 import { getAllProjects } from "../services/projectService";
 import AdviserCommentForm from "../components/AdviserCommentForm";
+import PaginatedGrid from "../components/PaginatedGrid";
 
 /**
  * AdviserDashboard
@@ -113,13 +114,18 @@ export default function AdviserDashboard() {
             </div>
 
             {/* Group list */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filtered.length === 0 ? (
-                <div className="col-span-full py-6 text-center text-sm text-brand-black/40">
-                  No groups match your search.
-                </div>
-              ) : (
-                filtered.map((p) => (
+            {filtered.length === 0 ? (
+              <div className="py-6 text-center text-sm text-brand-black/40">
+                No groups match your search.
+              </div>
+            ) : (
+              <PaginatedGrid
+                items={filtered}
+                initialPageSize={9}
+                pageSizeOptions={[10, 25, 50, 100]}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+              >
+                {(p) => (
                   <button
                     key={p.groupCode}
                     type="button"
@@ -169,9 +175,9 @@ export default function AdviserDashboard() {
                       </div>
                     )}
                   </button>
-                ))
-              )}
-            </div>
+                )}
+              </PaginatedGrid>
+            )}
           </div>
         )}
       </section>

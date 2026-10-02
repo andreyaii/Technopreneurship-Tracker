@@ -4,6 +4,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { getAllProjects } from "../services/projectService";
 import ProjectCard from "../components/ProjectCard";
 import { useAuth } from "../context/AuthContext";
+import PaginatedGrid from "../components/PaginatedGrid";
 
 export default function Projects() {
   const { student } = useAuth();
@@ -71,11 +72,15 @@ export default function Projects() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((project) => (
+        <PaginatedGrid
+          items={filtered}
+          initialPageSize={9}
+          pageSizeOptions={[10, 25, 50, 100]}
+        >
+          {(project) => (
             <ProjectCard key={project.groupCode} project={project} />
-          ))}
-        </div>
+          )}
+        </PaginatedGrid>
       )}
     </div>
   );
