@@ -370,7 +370,10 @@ export async function getAllProjects() {
       throw new Error(data.message || "Failed to load groups.");
     }
 
-    return Array.isArray(data.data) ? data.data : [];
+    const groups = Array.isArray(data.data) ? data.data : [];
+    return groups.filter(
+      (group) => typeof group?.title === "string" && group.title.trim().length > 0
+    );
   } catch (err) {
     console.error("getAllProjects error:", err);
     throw err;

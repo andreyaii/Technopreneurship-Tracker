@@ -12,6 +12,11 @@ import { useAuth } from "../context/AuthContext";
 export default function ProjectCard({ project }) {
   const { student } = useAuth();
   const isAdviser = student?.role === "adviser";
+
+  if (!project || typeof project.title !== "string" || !project.title.trim()) {
+    return null;
+  }
+
   const { title, description, memberCount, progress } = project;
 
   const cardContent = (

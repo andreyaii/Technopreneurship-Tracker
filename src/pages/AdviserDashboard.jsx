@@ -46,9 +46,12 @@ export default function AdviserDashboard() {
   }, []);
 
   const filtered = useMemo(() => {
+    const validProjects = projects.filter(
+      (p) => typeof p?.title === "string" && p.title.trim().length > 0
+    );
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return projects;
-    return projects.filter(
+    if (!q) return validProjects;
+    return validProjects.filter(
       (p) =>
         p.title.toLowerCase().includes(q) ||
         p.groupCode.toLowerCase().includes(q)

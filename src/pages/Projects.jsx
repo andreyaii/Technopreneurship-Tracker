@@ -29,9 +29,12 @@ export default function Projects() {
   }, []);
 
   const filtered = useMemo(() => {
+    const validProjects = projects.filter(
+      (p) => typeof p?.title === "string" && p.title.trim().length > 0
+    );
     const q = query.trim().toLowerCase();
-    if (!q) return projects;
-    return projects.filter((p) => p.title.toLowerCase().includes(q));
+    if (!q) return validProjects;
+    return validProjects.filter((p) => p.title.toLowerCase().includes(q));
   }, [projects, query]);
 
   return (
