@@ -14,8 +14,6 @@
  */
 
 import {
-  projects,
-  students,
   studentRequirements,
   requirementDefs,
 } from "../data/mockData";
@@ -101,24 +99,40 @@ export async function authenticateAdviser(adviserNo, pin) {
 }
 
 /**
- * Look up a single student by student number (no PIN check).
- * Used for session restoration. Falls back to mockData if the
- * Sheets API is unavailable.
+ * Look up a single student by student number.
+ * Uses Google Sheets via postAction("getStudentByStudentNo").
  */
 export async function getStudentByStudentNo(studentNo) {
-  // Prefer mock data for session restore — avoids a network round-trip on
-  // every page refresh and keeps the existing mock-first prototype working.
-  // When all data is live, replace this with a real getStudent API call.
-  const student = students.find((s) => s.studentNo === studentNo);
-  if (student) {
-    const { pin: _omit, ...safe } = student;
-    return resolveAsync({
-      ...safe,
-      role: "student",
-      mentor: student.mentor || student.instructor,
+  if (!studentNo) return null;
+
+  try {
+    const data = await postAction({
+      action: "getStudentByStudentNo",
+      studentNo: studentNo.trim(),
     });
+
+    if (!data.success || (!data.data && !data.student)) {
+      return null;
+    }
+
+    const s = data.data || data.student;
+
+    return {
+      role: "student",
+      studentNo: String(s.studentNo || ""),
+      name: String(s.name || ""),
+      section: String(s.section || ""),
+      groupCode: String(s.groupCode || ""),
+      mentor: String(s.mentor || s.instructor || ""),
+      program: String(s.program || ""),
+      memberNo: s.memberNo !== undefined && s.memberNo !== null ? Number(s.memberNo) : null,
+      deliverables: s.deliverables || [],
+      progress: s.progress || 0,
+    };
+  } catch (err) {
+    console.error("getStudentByStudentNo error:", err);
+    return null;
   }
-  return resolveAsync(undefined);
 }
 
 // ---------------------------------------------------------------------------

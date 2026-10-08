@@ -14,6 +14,7 @@
 
 const SHEET_NAMES = {
   STUDENTS: "Students",
+  GROUPS: "Groups",
   ADVISERS: "Advisers",
   GROUP_COMMENTS: "GroupComments",
   INDIVIDUAL_COMMENTS: "IndividualComments",
@@ -62,6 +63,15 @@ function doPost(e) {
 
       case "getGroupMembers":
         return jsonResponse(handleGetGroupMembers(body));
+
+      case "getGroupProgress":
+         return jsonResponse(handleGetGroupProgress(body));
+
+    case "getGroupDeliverables":
+        return jsonResponse(handleGetGroupDeliverables(body));
+
+      case "getGroups":
+        return jsonResponse(handleGetGroups(body));
 
       case "getGroupComments":
         return jsonResponse(handleGetGroupComments(body));
@@ -464,6 +474,157 @@ function handleGetGroupMembers(body) {
   return { success: true, data: members };
 }
 
+function handleGetGroupProgress(payload) {
+  const groupCode = String(payload.groupCode || "").trim();
+
+  if (!groupCode) {
+    return {
+      success: false,
+      message: "Group code is required.",
+    };
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAMES.STUDENTS);
+
+  if (!sheet) {
+    return {
+      success: false,
+      message: "Students sheet not found.",
+    };
+  }
+
+  const data = sheet.getDataRange().getValues();
+
+  if (data.length < 2) {
+    return {
+      success: true,
+      progress: 0,
+    };
+  }
+
+  const headers = data[0].map(h =>
+    String(h).trim().toUpperCase()
+  );
+
+  const colGroup = headers.indexOf("GROUP");
+
+  if (colGroup === -1) {
+    return {
+      success: false,
+      message: "GROUP column not found.",
+    };
+  }
+
+  let totalSubmissions = 0;
+  let totalExpected = 0;
+
+  for (let r = 1; r < data.length; r++) {
+    const row = data[r];
+
+    const rowGroup = String(row[colGroup] || "").trim();
+
+    if (rowGroup.toLowerCase() !== groupCode.toLowerCase()) {
+      continue;
+    }
+
+    for (const deliverable of DELIVERABLE_COLUMNS) {
+      const colIndex = headers.indexOf(
+        deliverable.key.toUpperCase()
+      );
+
+      if (colIndex === -1) {
+        continue;
+      }
+
+      totalExpected++;
+
+      const value = String(row[colIndex] || "").trim();
+
+      if (value !== "") {
+        totalSubmissions++;
+      }
+    }
+  }
+
+  const progress =
+    totalExpected > 0
+      ? Math.round((totalSubmissions / totalExpected) * 100)
+      : 0;
+
+  return {
+    success: true,
+    progress: progress,
+    submitted: totalSubmissions,
+    total: totalExpected,
+  };
+}
+/**
+ * Action: getGroups
+ * Returns all groups/projects from the "Groups" sheet.
+ */
+function handleGetGroups() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAMES.GROUPS);
+
+  if (!sheet) {
+    return {
+      success: false,
+      message: "Groups sheet not found.",
+    };
+  }
+
+  const data = sheet.getDataRange().getValues();
+
+  if (data.length < 2) {
+    return {
+      success: true,
+      data: [],
+    };
+  }
+
+  const headers = data[0].map(h => String(h).trim().toUpperCase());
+
+  const colGroup = headers.indexOf("GROUP");
+  const colLeaderNo = headers.indexOf("LEADER NO");
+  const colLeaderName = headers.indexOf("LEADER NAME");
+  const colProjectTitle = headers.indexOf("PROJECT TITLE");
+  const colProjectDescription = headers.indexOf("PROJECT DESCRIPTION");
+
+  const groups = [];
+
+  for (let r = 1; r < data.length; r++) {
+    const row = data[r];
+
+    const groupCode = colGroup !== -1
+      ? String(row[colGroup] || "").trim()
+      : "";
+
+    // Ignore completely empty rows
+    if (!groupCode) continue;
+
+    groups.push({
+      groupCode: groupCode,
+      leaderNo: colLeaderNo !== -1
+        ? String(row[colLeaderNo] || "").trim()
+        : "",
+      leaderName: colLeaderName !== -1
+        ? String(row[colLeaderName] || "").trim()
+        : "",
+      title: colProjectTitle !== -1
+        ? String(row[colProjectTitle] || "").trim()
+        : "",
+      description: colProjectDescription !== -1
+        ? String(row[colProjectDescription] || "").trim()
+        : "",
+    });
+  }
+
+  return {
+    success: true,
+    data: groups,
+  };
+}
 /**
  * Action: getGroupComments
  * Returns all group comments for a groupCode, newest first.
@@ -658,6 +819,142 @@ function handleGetRatings(body) {
   };
 }
 
+function handleGetGroupDeliverables(payload) {
+  const groupCode = String(payload.groupCode || "").trim();
+
+  if (!groupCode) {
+    return {
+      success: false,
+      message: "Group code is required.",
+    };
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAMES.STUDENTS);
+
+  if (!sheet) {
+    return {
+      success: false,
+      message: "Students sheet not found.",
+    };
+  }
+
+  const data = sheet.getDataRange().getValues();
+
+  if (data.length < 2) {
+    return {
+      success: true,
+      data: [],
+    };
+  }
+
+  const headers = data[0].map((h) =>
+    String(h).trim().toUpperCase()
+  );
+
+  const colGroup = headers.indexOf("GROUP");
+
+  if (colGroup === -1) {
+    return {
+      success: false,
+      message: "GROUP column not found.",
+    };
+  }
+
+  const groupRows = data.slice(1).filter((row) => {
+    const rowGroup = String(row[colGroup] || "").trim();
+    return rowGroup.toLowerCase() === groupCode.toLowerCase();
+  });
+
+  if (groupRows.length === 0) {
+    return {
+      success: true,
+      data: [],
+    };
+  }
+
+  const timeZone = ss.getSpreadsheetTimeZone();
+
+  const deliverables = DELIVERABLE_COLUMNS.map((deliverable) => {
+    const colIndex = headers.indexOf(
+      deliverable.key.toUpperCase()
+    );
+
+    if (colIndex === -1) {
+      return {
+        id: deliverable.key,
+        title: deliverable.label,
+        type: deliverable.type,
+        status: "Missing",
+        submittedCount: 0,
+        totalMembers: groupRows.length,
+        submittedDate: null,
+        daysLate: 0,
+      };
+    }
+
+    let submittedCount = 0;
+    let latestSubmittedDate = null;
+
+    groupRows.forEach((row) => {
+      const value = row[colIndex];
+
+      if (
+        value !== "" &&
+        value !== null &&
+        value !== undefined
+      ) {
+        submittedCount++;
+
+        if (value instanceof Date) {
+          if (
+            !latestSubmittedDate ||
+            value > latestSubmittedDate
+          ) {
+            latestSubmittedDate = value;
+          }
+        }
+      }
+    });
+
+    const totalMembers = groupRows.length;
+
+    const allSubmitted =
+      submittedCount === totalMembers;
+
+    let formattedSubmittedDate = null;
+
+    if (allSubmitted && latestSubmittedDate) {
+      formattedSubmittedDate = Utilities.formatDate(
+        latestSubmittedDate,
+        timeZone,
+        "MMMM d, yyyy"
+      );
+    }
+
+    return {
+      id: deliverable.key,
+      title: deliverable.label,
+      type: deliverable.type,
+
+      status: allSubmitted
+        ? "Submitted"
+        : "Missing",
+
+      submittedCount: submittedCount,
+      totalMembers: totalMembers,
+
+      submittedDate: formattedSubmittedDate,
+
+      daysLate: 0,
+    };
+  });
+
+  return {
+    success: true,
+    data: deliverables,
+  };
+}
 /**
  * Action: addRating
  * Appends a 1-5 rating record to "Ratings" sheet.
@@ -714,4 +1011,297 @@ function handleAddRating(body) {
       timestamp: timestamp.toISOString(),
     },
   };
+}
+function doGet() {
+  return ContentService
+    .createTextOutput("Technopreneurship Tracker API is running.")
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+// ============================================================================
+// CCS_TEC_TRACKER → TEST SYNCHRONIZATION
+// Copies all values from the private source spreadsheet
+// to the private TEST sheet in this spreadsheet.
+//
+// SOURCE:
+//   Spreadsheet ID: 15vPupFBL6CryxubhsSQwSu5gSU-xm_Ms2dQGwxoMXOQ
+//   Sheet: CCS_TEC_Tracker
+//
+// DESTINATION:
+//   Spreadsheet ID: 1ERnrccXBaGPFB-Ukcsjp2AUSNawO3U8dIjMQvfCXLVI
+//   Sheet: TEST
+// ============================================================================
+
+const CCS_TEC_SOURCE_ID =
+  '15vPupFBL6CryxubhsSQwSu5gSU-xm_Ms2dQGwxoMXOQ';
+
+const CCS_TEC_SOURCE_SHEET =
+  'CCS_TEC_Tracker';
+
+const CCS_TEC_DESTINATION_ID =
+  '1ERnrccXBaGPFB-Ukcsjp2AUSNawO3U8dIjMQvfCXLVI';
+
+const CCS_TEC_DESTINATION_SHEET =
+  'TEST';
+
+
+function synchronizeCCSTECTracker() {
+
+  try {
+
+    // ------------------------------------------------------------
+    // OPEN SOURCE
+    // ------------------------------------------------------------
+
+    const sourceSS =
+      SpreadsheetApp.openById(CCS_TEC_SOURCE_ID);
+
+    const sourceSheet =
+      sourceSS.getSheetByName(CCS_TEC_SOURCE_SHEET);
+
+    if (!sourceSheet) {
+      throw new Error(
+        'Source sheet "' +
+        CCS_TEC_SOURCE_SHEET +
+        '" was not found.'
+      );
+    }
+
+
+    // ------------------------------------------------------------
+    // READ SOURCE DATA
+    // ------------------------------------------------------------
+
+    const sourceRange =
+      sourceSheet.getDataRange();
+
+    const data =
+      sourceRange.getValues();
+
+
+    // ------------------------------------------------------------
+    // OPEN DESTINATION
+    // ------------------------------------------------------------
+
+    const destinationSS =
+      SpreadsheetApp.openById(CCS_TEC_DESTINATION_ID);
+
+    const destinationSheet =
+      destinationSS.getSheetByName(CCS_TEC_DESTINATION_SHEET);
+
+    if (!destinationSheet) {
+      throw new Error(
+        'Destination sheet "' +
+        CCS_TEC_DESTINATION_SHEET +
+        '" was not found.'
+      );
+    }
+
+
+    // ------------------------------------------------------------
+    // CLEAR OLD DATA
+    // ------------------------------------------------------------
+
+    destinationSheet.clearContent();
+
+
+    // ------------------------------------------------------------
+    // STOP IF SOURCE IS EMPTY
+    // ------------------------------------------------------------
+
+    if (
+      data.length === 0 ||
+      data[0].length === 0
+    ) {
+      console.log('Source sheet is empty.');
+      return;
+    }
+
+
+    // ------------------------------------------------------------
+    // MAKE SURE DESTINATION HAS ENOUGH ROWS
+    // ------------------------------------------------------------
+
+    if (
+      destinationSheet.getMaxRows() <
+      data.length
+    ) {
+
+      destinationSheet.insertRowsAfter(
+        destinationSheet.getMaxRows(),
+        data.length -
+        destinationSheet.getMaxRows()
+      );
+
+    }
+
+
+    // ------------------------------------------------------------
+    // MAKE SURE DESTINATION HAS ENOUGH COLUMNS
+    // ------------------------------------------------------------
+
+    if (
+      destinationSheet.getMaxColumns() <
+      data[0].length
+    ) {
+
+      destinationSheet.insertColumnsAfter(
+        destinationSheet.getMaxColumns(),
+        data[0].length -
+        destinationSheet.getMaxColumns()
+      );
+
+    }
+
+
+    // ------------------------------------------------------------
+    // WRITE DATA
+    // ------------------------------------------------------------
+
+    destinationSheet
+      .getRange(
+        1,
+        1,
+        data.length,
+        data[0].length
+      )
+      .setValues(data);
+
+
+    // ------------------------------------------------------------
+    // LOG RESULT
+    // ------------------------------------------------------------
+
+    console.log(
+      'CCS_TEC_Tracker synchronization completed: ' +
+      data.length +
+      ' rows × ' +
+      data[0].length +
+      ' columns.'
+    );
+
+  } catch (error) {
+
+    console.error(
+      'CCS_TEC_Tracker synchronization failed: ' +
+      error.toString()
+    );
+
+    throw error;
+  }
+}
+function synchronizeCCSTECTracker() {
+
+  try {
+
+    Logger.log('Starting synchronization...');
+
+    // SOURCE
+    const sourceSS = SpreadsheetApp.openById(
+      '15vPupFBL6CryxubhsSQwSu5gSU-xm_Ms2dQGwxoMXOQ'
+    );
+
+    const sourceSheet = sourceSS.getSheetByName(
+      'CCS_TEC_Tracker'
+    );
+
+    if (!sourceSheet) {
+      throw new Error(
+        'SOURCE SHEET NOT FOUND: CCS_TEC_Tracker'
+      );
+    }
+
+    Logger.log(
+      'Source found: ' +
+      sourceSheet.getName()
+    );
+
+    const data = sourceSheet
+      .getDataRange()
+      .getValues();
+
+    Logger.log(
+      'Source data size: ' +
+      data.length +
+      ' rows x ' +
+      data[0].length +
+      ' columns'
+    );
+
+
+    // DESTINATION
+    const destinationSS = SpreadsheetApp.openById(
+      '1ERnrccXBaGPFB-Ukcsjp2AUSNawO3U8dIjMQvfCXLVI'
+    );
+
+    const destinationSheet =
+      destinationSS.getSheetByName('TEST');
+
+    if (!destinationSheet) {
+      throw new Error(
+        'DESTINATION SHEET NOT FOUND: TEST'
+      );
+    }
+
+    Logger.log(
+      'Destination found: ' +
+      destinationSheet.getName()
+    );
+
+
+    // Clear existing contents
+    destinationSheet.clearContents();
+
+
+    // Make sure destination is large enough
+    if (
+      destinationSheet.getMaxRows() <
+      data.length
+    ) {
+      destinationSheet.insertRowsAfter(
+        destinationSheet.getMaxRows(),
+        data.length -
+        destinationSheet.getMaxRows()
+      );
+    }
+
+    if (
+      destinationSheet.getMaxColumns() <
+      data[0].length
+    ) {
+      destinationSheet.insertColumnsAfter(
+        destinationSheet.getMaxColumns(),
+        data[0].length -
+        destinationSheet.getMaxColumns()
+      );
+    }
+
+
+    // Copy data
+    destinationSheet
+      .getRange(
+        1,
+        1,
+        data.length,
+        data[0].length
+      )
+      .setValues(data);
+
+
+    Logger.log(
+      'SUCCESS: ' +
+      data.length +
+      ' rows x ' +
+      data[0].length +
+      ' columns copied.'
+    );
+
+  } catch (error) {
+
+    Logger.log(
+      'ERROR: ' +
+      error.toString()
+    );
+
+    throw error;
+  }
 }
