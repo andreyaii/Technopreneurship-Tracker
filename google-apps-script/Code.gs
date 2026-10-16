@@ -3,7 +3,7 @@
  * Technopreneurship Tracker - Google Apps Script Web App (Backend)
  * ============================================================================
  * Database Google Sheets:
- *  1. "Students"           - Student credentials, group, mentor, deliverables
+ *  1. "TEC_CSIT"           - Student credentials, group, mentor, deliverables
  *  2. "Advisers"           - Adviser credentials (AdviserID, Name, PIN, Role)
  *  3. "GroupComments"      - Team-wide comments (Group, Adviser, Comment, Timestamp)
  *  4. "IndividualComments" - Student-private comments (StudentNo., Group, Student Name, Adviser, Comment, Timestamp)
@@ -13,7 +13,7 @@
  */
 
 const SHEET_NAMES = {
-  STUDENTS: "Students",
+  STUDENTS: "TEC_CSIT",
   GROUPS: "Groups",
   ADVISERS: "Advisers",
   GROUP_COMMENTS: "GroupComments",
@@ -22,22 +22,50 @@ const SHEET_NAMES = {
   REF: "REF",
 };
 
-// Row 539 in Students sheet contains OPEN/CLOSED availability flags for deliverables
+// Row 539 in TEC_CSIT sheet contains OPEN/CLOSED availability flags for deliverables
 const AVAILABILITY_ROW_INDEX = 539;
 
-// Deliverable column definitions in "Students" sheet
-const DELIVERABLE_COLUMNS = [
-  { key: "A1.1", label: "Activity 1.1 — Technopreneurship Guidelines", type: "document" },
-  { key: "Q1.2", label: "Quiz 1.2 — Quiz 1", type: "quiz" },
-  { key: "A2.1", label: "Activity 2.1 — Workbook Creation", type: "document" },
-  { key: "A2.2", label: "Activity 2.2 — Starting a Tech-based Venture", type: "document" },
-  { key: "A2.3", label: "Activity 2.3 — Competition Analysis", type: "document" },
-  { key: "A2.4", label: "Activity 2.4 — Elevator Pitch", type: "pitch" },
-  { key: "Q2.5", label: "Activity 2.5 — Quiz 2", type: "quiz" },
-  { key: "A4.1", label: "Revised Elevator Pitch", type: "pitch" },
-  { key: "A4.2", label: "Market Segmentation", type: "document" },
-  { key: "A5.1", label: "Lean Canvas", type: "pitch" },
-];
+const STUDENT_METADATA_HEADERS = new Set([
+  "NO",
+  "NAME OF STUDENT",
+  "STUDENT NO.",
+  "PROGRAM",
+  "SEC",
+  "GROUP",
+  "MEMBER #",
+  "MENTOR",
+  "PIN",
+]);
+
+function getDeliverableColumns(headerRow) {
+  return headerRow.reduce((columns, header, index) => {
+    const title = String(header || "").trim();
+    const normalizedTitle = title.toUpperCase();
+
+    if (!title || STUDENT_METADATA_HEADERS.has(normalizedTitle)) {
+      return columns;
+    }
+
+    const type = /^Q\d|QUIZ/.test(normalizedTitle)
+      ? "quiz"
+      : /\bPITCH\b/.test(normalizedTitle)
+        ? "pitch"
+        : "document";
+
+    columns.push({
+      id: `deliverable-${index}`,
+      index: index,
+      title: title,
+      type: type,
+    });
+    return columns;
+  }, []);
+}
+
+function isNotAvailableValue(value) {
+  return value === null || value === undefined ||
+    (typeof value === "string" && (!value.trim() || value.trim().toUpperCase() === "#N/A"));
+}
 
 /**
  * Handle HTTP POST requests from the Technopreneurship Tracker frontend.
@@ -135,7 +163,7 @@ function getOrCreateSheet(sheetName, defaultHeaders) {
 
 /**
  * Action: loginStudent
- * Validates Student No. and PIN against "Students" sheet.
+ * Validates Student No. and PIN against "TEC_CSIT" sheet.
  * Preserves existing deliverable format and progress computation.
  * Never returns PIN.
  */
@@ -159,6 +187,7 @@ function handleLoginStudent(body) {
   }
 
   const headers = data[0].map(h => String(h).trim().toUpperCase());
+  const deliverableColumns = getDeliverableColumns(data[0]);
   const colIndex = {
     no: headers.indexOf("NO"),
     name: headers.indexOf("NAME OF STUDENT"),
@@ -179,11 +208,8 @@ function handleLoginStudent(body) {
   let availabilityMap = {};
   if (data.length >= AVAILABILITY_ROW_INDEX) {
     const availRow = data[AVAILABILITY_ROW_INDEX - 1];
-    DELIVERABLE_COLUMNS.forEach(deliv => {
-      const idx = headers.indexOf(deliv.key.toUpperCase());
-      if (idx !== -1) {
-        availabilityMap[deliv.key] = String(availRow[idx] || "").trim().toUpperCase();
-      }
+    deliverableColumns.forEach(deliv => {
+      availabilityMap[deliv.index] = String(availRow[deliv.index] || "").trim().toUpperCase();
     });
   }
 
@@ -203,15 +229,19 @@ function handleLoginStudent(body) {
       // Build deliverables list
       const deliverables = [];
       let submittedCount = 0;
+      let unavailableCount = 0;
       const ssTimezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone() || "GMT+8";
 
-      DELIVERABLE_COLUMNS.forEach(deliv => {
-        const colIdx = headers.indexOf(deliv.key.toUpperCase());
+      deliverableColumns.forEach(deliv => {
+        const colIdx = deliv.index;
         let isSubmitted = false;
         let submittedDate = null;
+        const rawCell = row[colIdx];
+        const isNotAvailable = isNotAvailableValue(rawCell);
 
-        if (colIdx !== -1) {
-          const rawCell = row[colIdx];
+        if (isNotAvailable) {
+          unavailableCount++;
+        } else if (colIdx !== -1) {
           if (rawCell !== null && rawCell !== undefined && rawCell !== "") {
             if (rawCell instanceof Date) {
               if (!isNaN(rawCell.getTime())) {
@@ -236,17 +266,17 @@ function handleLoginStudent(body) {
         }
 
         // Row 539 controls availability separately from student submission
-        const rawAvail = availabilityMap[deliv.key];
+        const rawAvail = availabilityMap[deliv.index];
         const isAvailable = (rawAvail !== undefined && rawAvail !== "")
           ? rawAvail === "OPEN"
           : true;
         const availabilityStr = isAvailable ? "Open" : "Closed";
 
         deliverables.push({
-          id: deliv.key,
-          title: deliv.label,
+          id: deliv.id,
+          title: deliv.title,
           type: deliv.type,
-          status: isSubmitted ? "Submitted" : "Missing",
+          status: isSubmitted ? "Submitted" : "Not Available",
           isSubmitted: isSubmitted,
           submittedDate: submittedDate,
           availability: availabilityStr,
@@ -256,7 +286,9 @@ function handleLoginStudent(body) {
       });
 
       const totalDeliverables = deliverables.length;
-      const progress = totalDeliverables > 0 ? Math.round((submittedCount / totalDeliverables) * 100) : 0;
+      const progress = totalDeliverables > 0
+        ? Math.round((submittedCount / (submittedCount + unavailableCount)) * 100)
+        : 0;
 
       return {
         success: true,
@@ -506,6 +538,7 @@ function handleGetGroupProgress(payload) {
   const headers = data[0].map(h =>
     String(h).trim().toUpperCase()
   );
+  const deliverableColumns = getDeliverableColumns(data[0]);
 
   const colGroup = headers.indexOf("GROUP");
 
@@ -517,6 +550,7 @@ function handleGetGroupProgress(payload) {
   }
 
   let totalSubmissions = 0;
+  let totalUnavailable = 0;
   let totalExpected = 0;
 
   for (let r = 1; r < data.length; r++) {
@@ -528,20 +562,14 @@ function handleGetGroupProgress(payload) {
       continue;
     }
 
-    for (const deliverable of DELIVERABLE_COLUMNS) {
-      const colIndex = headers.indexOf(
-        deliverable.key.toUpperCase()
-      );
-
-      if (colIndex === -1) {
-        continue;
-      }
-
+    for (const deliverable of deliverableColumns) {
       totalExpected++;
 
-      const value = String(row[colIndex] || "").trim();
+      const rawValue = row[deliverable.index];
 
-      if (value !== "") {
+      if (isNotAvailableValue(rawValue)) {
+        totalUnavailable++;
+      } else {
         totalSubmissions++;
       }
     }
@@ -549,13 +577,14 @@ function handleGetGroupProgress(payload) {
 
   const progress =
     totalExpected > 0
-      ? Math.round((totalSubmissions / totalExpected) * 100)
+      ? Math.round((totalSubmissions / (totalSubmissions + totalUnavailable)) * 100)
       : 0;
 
   return {
     success: true,
     progress: progress,
     submitted: totalSubmissions,
+    notAvailable: totalUnavailable,
     total: totalExpected,
   };
 }
@@ -851,6 +880,7 @@ function handleGetGroupDeliverables(payload) {
   const headers = data[0].map((h) =>
     String(h).trim().toUpperCase()
   );
+  const deliverableColumns = getDeliverableColumns(data[0]);
 
   const colGroup = headers.indexOf("GROUP");
 
@@ -875,29 +905,19 @@ function handleGetGroupDeliverables(payload) {
 
   const timeZone = ss.getSpreadsheetTimeZone();
 
-  const deliverables = DELIVERABLE_COLUMNS.map((deliverable) => {
-    const colIndex = headers.indexOf(
-      deliverable.key.toUpperCase()
-    );
-
-    if (colIndex === -1) {
-      return {
-        id: deliverable.key,
-        title: deliverable.label,
-        type: deliverable.type,
-        status: "Missing",
-        submittedCount: 0,
-        totalMembers: groupRows.length,
-        submittedDate: null,
-        daysLate: 0,
-      };
-    }
-
+  const deliverables = deliverableColumns.map((deliverable) => {
+    const colIndex = deliverable.index;
     let submittedCount = 0;
+    let unavailableCount = 0;
     let latestSubmittedDate = null;
 
     groupRows.forEach((row) => {
       const value = row[colIndex];
+
+      if (isNotAvailableValue(value)) {
+        unavailableCount++;
+        return;
+      }
 
       if (
         value !== "" &&
@@ -918,13 +938,15 @@ function handleGetGroupDeliverables(payload) {
     });
 
     const totalMembers = groupRows.length;
+    const availableMembers = totalMembers - unavailableCount;
 
-    const allSubmitted =
-      submittedCount === totalMembers;
+    const status = submittedCount === totalMembers
+      ? "Submitted"
+      : "Not Available";
 
     let formattedSubmittedDate = null;
 
-    if (allSubmitted && latestSubmittedDate) {
+    if (status === "Submitted" && latestSubmittedDate) {
       formattedSubmittedDate = Utilities.formatDate(
         latestSubmittedDate,
         timeZone,
@@ -933,16 +955,14 @@ function handleGetGroupDeliverables(payload) {
     }
 
     return {
-      id: deliverable.key,
-      title: deliverable.label,
+      id: deliverable.id,
+      title: deliverable.title,
       type: deliverable.type,
 
-      status: allSubmitted
-        ? "Submitted"
-        : "Missing",
+      status: status,
 
       submittedCount: submittedCount,
-      totalMembers: totalMembers,
+      totalMembers: availableMembers,
 
       submittedDate: formattedSubmittedDate,
 
@@ -1041,7 +1061,7 @@ const CCS_TEC_DESTINATION_ID =
   '1ERnrccXBaGPFB-Ukcsjp2AUSNawO3U8dIjMQvfCXLVI';
 
 const CCS_TEC_DESTINATION_SHEET =
-  'TEST';
+  'TEC_CSIT';
 
 
 function synchronizeCCSTECTracker() {
@@ -1234,11 +1254,11 @@ function synchronizeCCSTECTracker() {
     );
 
     const destinationSheet =
-      destinationSS.getSheetByName('TEST');
+      destinationSS.getSheetByName('TEC_CSIT');
 
     if (!destinationSheet) {
       throw new Error(
-        'DESTINATION SHEET NOT FOUND: TEST'
+        'DESTINATION SHEET NOT FOUND: TEC_CSIT'
       );
     }
 

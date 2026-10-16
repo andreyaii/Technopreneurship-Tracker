@@ -26,8 +26,8 @@ export const requirementDefs = [
   { key: "SPMP", label: "Project Management Plan (SPMP)", dueDate: "2026-10-17" },
 ];
 
-// value 0 or 1 = Missing (not submitted), 2 = Submitted
-const STATUS_BY_VALUE = ["Missing", "Missing", "Submitted"];
+// value 0 or 1 = Not Available, 2 = Submitted
+const STATUS_BY_VALUE = ["Not Available", "Not Available", "Submitted"];
 const PROGRESS_BY_VALUE = [0, 0, 100];
 
 export const students = [

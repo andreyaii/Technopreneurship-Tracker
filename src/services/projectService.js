@@ -198,7 +198,6 @@ export async function getGroupSubmissionProgress(studentOrGroupCode) {
   const submitted = rows.filter(
     (r) => r.status === "Submitted" || r.isSubmitted === true
   ).length;
-
   return Math.round((submitted / rows.length) * 100);
 }
 
@@ -301,7 +300,7 @@ export async function getProjectRequirementsOverview(groupCode) {
       ).length;
       const allSubmitted =
         members.length > 0 && submittedCount === members.length;
-      const status = allSubmitted ? "Submitted" : "Missing";
+      const status = allSubmitted ? "Submitted" : "Not Available";
       const submittedDate = allSubmitted
         ? allRows[0]?.[i]?.submittedDate ?? null
         : null;

@@ -98,7 +98,23 @@ function isSubmitted(item) {
     return item.status === "Submitted" || item.isSubmitted === true;
 }
 
+function isUnavailable(item) {
+    return !isSubmitted(item);
+}
+
 function StatusBadge({ submitted }) {
+    if (!submitted) {
+        return (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap bg-rose-50 text-rose-700 border border-rose-200">
+                <Circle
+                    className="w-3.5 h-3.5 shrink-0"
+                    strokeWidth={2.5}
+                />
+                Not Available
+            </span>
+        );
+    }
+
     if (submitted) {
         return (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
@@ -111,15 +127,7 @@ function StatusBadge({ submitted }) {
         );
     }
 
-    return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-            <Circle
-                className="w-3.5 h-3.5 shrink-0"
-                strokeWidth={2.5}
-            />
-            Missing
-        </span>
-    );
+    return null;
 }
 
 export default function AdviserGroupDeliverables({
@@ -131,7 +139,8 @@ export default function AdviserGroupDeliverables({
     const [page, setPage] = useState(0);
 
     const submittedCount = deliverables.filter(isSubmitted).length;
-    const missingCount = deliverables.length - submittedCount;
+    const unavailableCount = deliverables.filter(isUnavailable).length;
+    const completedCount = submittedCount;
 
     const filteredDeliverables = useMemo(() => {
         return deliverables.filter((item) => {
@@ -141,8 +150,8 @@ export default function AdviserGroupDeliverables({
                 return submitted;
             }
 
-            if (activeFilter === "missing") {
-                return !submitted;
+            if (activeFilter === "notAvailable") {
+                return isUnavailable(item);
             }
 
             return true;
@@ -170,9 +179,9 @@ export default function AdviserGroupDeliverables({
         startIndex + DELIVERABLES_PER_PAGE
     );
 
-    const submittedShare = deliverables.length
+    const submittedShare = deliverables.length > 0
         ? Math.round(
-            (submittedCount / deliverables.length) * 100
+            (submittedCount / (submittedCount + unavailableCount)) * 100
         )
         : 0;
 
@@ -202,7 +211,7 @@ export default function AdviserGroupDeliverables({
                         </div>
 
                         <p className="text-xs text-brand-black/50 mt-0.5">
-                            Group member submissions and missing items
+                            Group member submissions and unavailable items
                         </p>
                     </div>
                 </div>
@@ -232,13 +241,13 @@ export default function AdviserGroupDeliverables({
 
                     <button
                         type="button"
-                        onClick={() => setActiveFilter("missing")}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeFilter === "missing"
+                        onClick={() => setActiveFilter("notAvailable")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeFilter === "notAvailable"
                                 ? "bg-rose-700 text-white shadow-sm"
                                 : "bg-rose-50 text-rose-700 hover:bg-rose-100/80 border border-rose-200/60"
                             }`}
                     >
-                        Missing ({missingCount})
+                        Not Available ({unavailableCount})
                     </button>
                 </div>
             </div>
@@ -345,10 +354,12 @@ export default function AdviserGroupDeliverables({
                                                     submitted={submitted}
                                                 />
 
-                                                <span className="text-xs font-medium text-brand-black/55">
-                                                    {submittedMembers}/{totalMembers}{" "}
-                                                    members submitted
-                                                </span>
+                                                {item.status !== "Not Available" && (
+                                                    <span className="text-xs font-medium text-brand-black/55">
+                                                        {submittedMembers}/{totalMembers}{" "}
+                                                        available members submitted
+                                                    </span>
+                                                )}
                                             </div>
                                         </td>
 
@@ -366,7 +377,7 @@ export default function AdviserGroupDeliverables({
                                                     </span>
                                                 </div>
                                             ) : (
-                                                <span className="text-xs sm:text-sm text-brand-black/40">
+                                                    <span className="block w-full text-center text-xs sm:text-sm text-brand-black/40">
                                                     —
                                                 </span>
                                             )}
@@ -407,10 +418,10 @@ export default function AdviserGroupDeliverables({
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
                     <div className="flex items-center gap-2">
                         <span className="font-semibold text-brand-black">
-                            {submittedCount} of {deliverables.length}
+                            {completedCount} of {deliverables.length}
                         </span>
 
-                        <span>completed</span>
+                        <span>submitted</span>
 
                         <span className="font-semibold text-brand-progress">
                             {submittedShare}%

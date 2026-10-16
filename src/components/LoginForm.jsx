@@ -20,16 +20,16 @@ export default function LoginForm() {
   const [error, setError] = useState("");
 
   const handlePinChange = (e) => {
-    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 4);
-    setPin(digitsOnly);
+    const alphanumericOnly = e.target.value.replace(/[^a-z0-9]/gi, "").slice(0, 6);
+    setPin(alphanumericOnly);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!studentNo.trim() || pin.length !== 4) {
-      setError(`Enter your ${role === "adviser" ? "Adviser ID" : "Student Number"} and a 4-digit PIN.`);
+    if (!studentNo.trim() || pin.length !== 6) {
+      setError(`Enter your ${role === "adviser" ? "Adviser ID" : "Student Number"} and PIN.`);
       return;
     }
 
@@ -74,19 +74,19 @@ export default function LoginForm() {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="pin" className="text-sm font-semibold text-gray-800">
-          4-Digit PIN
+          PIN
         </label>
         <div className="relative">
           <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" strokeWidth={2} />
           <input
             id="pin"
             type="password"
-            inputMode="numeric"
+            inputMode="text"
             autoComplete="current-password"
-            placeholder="••••"
+            placeholder="••••••"
             value={pin}
             onChange={handlePinChange}
-            maxLength={4}
+            maxLength={6}
             disabled={isLoading}
             className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium tracking-[0.3em] placeholder:text-gray-400 placeholder:tracking-normal focus:bg-white focus:text-gray-900 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           />

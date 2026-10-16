@@ -2,7 +2,7 @@
  * Type definitions for Course Deliverables
  */
 
-export type DeliverableStatus = "Submitted" | "Missing";
+export type DeliverableStatus = "Submitted" | "Not Available";
 
 export type DeliverableType =
   | "document"

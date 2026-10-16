@@ -69,9 +69,15 @@ export default function Dashboard() {
           : groupDeliverables;
 
       const userProgress =
-        typeof student?.progress === "number" && student.progress > 0
-          ? student.progress
-          : progress;
+        student?.deliverables?.length > 0
+          ? Math.round(
+              (student.deliverables.filter(
+                (item) => item.status === "Submitted" || item.isSubmitted === true
+              ).length / student.deliverables.length) * 100
+            )
+          : typeof student?.progress === "number"
+            ? student.progress
+            : progress;
 
       if (!isCurrent) return;
       setProject(projectData);
@@ -192,7 +198,7 @@ export default function Dashboard() {
               label="My Progress"
               value={overallProgress}
               icon={TrendingUp}
-              hint="Share of your group's deliverables that are submitted"
+              hint="Share of your deliverables that are completed"
             />
           </section>
 

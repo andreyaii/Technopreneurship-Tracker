@@ -92,7 +92,20 @@ function isSubmitted(item) {
   return item.status === "Submitted" || item.isSubmitted === true;
 }
 
+function isUnavailable(item) {
+  return !isSubmitted(item);
+}
+
 function StatusBadge({ submitted }) {
+  if (!submitted) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap bg-rose-50 text-rose-700 border border-rose-200">
+        <Circle className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} />
+        Not Available
+      </span>
+    );
+  }
+
   if (submitted) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
@@ -102,16 +115,11 @@ function StatusBadge({ submitted }) {
     );
   }
 
-  return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-      <Circle className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} />
-      Missing
-    </span>
-  );
+  return null;
 }
 
 /**
- * Group-scoped deliverable list. Status is only Submitted or Missing.
+ * Group-scoped deliverable list. Status is Submitted or Not Available.
  * Shows 6 rows per page.
  */
 export default function CourseDeliverables({
@@ -123,13 +131,14 @@ export default function CourseDeliverables({
   const [page, setPage] = useState(0);
 
   const submittedCount = deliverables.filter(isSubmitted).length;
-  const missingCount = deliverables.length - submittedCount;
+  const unavailableCount = deliverables.filter(isUnavailable).length;
+  const completedCount = submittedCount;
 
   const filteredDeliverables = useMemo(() => {
     return deliverables.filter((item) => {
       const submitted = isSubmitted(item);
       if (activeFilter === "submitted") return submitted;
-      if (activeFilter === "missing") return !submitted;
+      if (activeFilter === "notAvailable") return isUnavailable(item);
       return true;
     });
   }, [deliverables, activeFilter]);
@@ -143,8 +152,8 @@ export default function CourseDeliverables({
   const currentPage = Math.min(page, totalPages - 1);
   const startIndex = currentPage * DELIVERABLES_PER_PAGE;
   const pageRows = filteredDeliverables.slice(startIndex, startIndex + DELIVERABLES_PER_PAGE);
-  const submittedShare = deliverables.length
-    ? Math.round((submittedCount / deliverables.length) * 100)
+  const submittedShare = deliverables.length > 0
+    ? Math.round((submittedCount / (submittedCount + unavailableCount)) * 100)
     : 0;
 
   return (
@@ -166,7 +175,7 @@ export default function CourseDeliverables({
               </span>
             </div>
             <p className="text-xs text-brand-black/50 mt-0.5">
-              Your group&apos;s submissions and missing items
+              Your group&apos;s submissions and unavailable items
             </p>
           </div>
         </div>
@@ -194,13 +203,13 @@ export default function CourseDeliverables({
           </button>
           <button
             type="button"
-            onClick={() => setActiveFilter("missing")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeFilter === "missing"
+            onClick={() => setActiveFilter("notAvailable")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeFilter === "notAvailable"
                 ? "bg-rose-700 text-white shadow-sm"
                 : "bg-rose-50 text-rose-700 hover:bg-rose-100/80 border border-rose-200/60"
               }`}
           >
-            Missing ({missingCount})
+            Not Available ({unavailableCount})
           </button>
         </div>
       </div>
@@ -273,7 +282,7 @@ export default function CourseDeliverables({
                           {item.submittedDate}
                         </span>
                       ) : (
-                        <span className="text-xs sm:text-sm text-brand-black/40">—</span>
+                        <span className="block w-full text-center text-xs sm:text-sm text-brand-black/40">—</span>
                       )}
                     </td>
                     <td className="py-4 px-4 align-middle text-xs font-semibold">
@@ -300,7 +309,7 @@ export default function CourseDeliverables({
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-brand-black">
-              {submittedCount} of {deliverables.length}
+              {completedCount} of {deliverables.length}
             </span>
             <span>submitted</span>
             <span className="font-semibold text-brand-progress">{submittedShare}%</span>

@@ -1,7 +1,7 @@
 import { CheckCircle2, Circle } from "lucide-react";
 
 /**
- * StatusPill — deliverables are only Submitted or Missing.
+ * StatusPill — deliverables are only Submitted or Not Available.
  * Icon + text so meaning does not rely on color alone.
  */
 const CONFIG = {
@@ -9,14 +9,14 @@ const CONFIG = {
     icon: CheckCircle2,
     classes: "bg-emerald-50 text-emerald-800 border border-emerald-200",
   },
-  Missing: {
+  "Not Available": {
     icon: Circle,
     classes: "bg-red-50 text-red-700 border border-red-200",
   },
 };
 
 export default function StatusPill({ status, size = "md" }) {
-  const config = CONFIG[status] || CONFIG.Missing;
+  const config = CONFIG[status] || CONFIG["Not Available"];
   const Icon = config.icon;
   const sizeClasses =
     size === "sm" ? "text-[11px] px-2 py-0.5 gap-1" : "text-xs px-2.5 py-1 gap-1.5";
