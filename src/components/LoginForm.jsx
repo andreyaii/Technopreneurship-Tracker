@@ -20,20 +20,19 @@ export default function LoginForm() {
   const [error, setError] = useState("");
 
   const handlePinChange = (e) => {
-    const alphanumericOnly = e.target.value.replace(/[^a-z0-9]/gi, "").slice(0, 6);
-    setPin(alphanumericOnly);
+    setPin(e.target.value);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!studentNo.trim() || pin.length !== 6) {
-      setError(`Enter your ${role === "adviser" ? "Adviser ID" : "Student Number"} and PIN.`);
+    if (!studentNo.trim() || !pin.trim()) {
+      setError(`Enter your ${role === "adviser" ? "Adviser ID" : "Student Number"} and ${role === "adviser" ? "PIN" : "password or PIN"}.`);
       return;
     }
 
-    const result = await login(studentNo, pin, role);
+    const result = await login(studentNo.trim(), pin, role);
     if (result.success) {
       navigate(role === "adviser" ? "/adviser" : "/dashboard");
     } else {
@@ -74,7 +73,7 @@ export default function LoginForm() {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="pin" className="text-sm font-semibold text-gray-800">
-          PIN
+          {role === "adviser" ? "PIN" : "Password / PIN"}
         </label>
         <div className="relative">
           <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" strokeWidth={2} />
@@ -83,12 +82,11 @@ export default function LoginForm() {
             type="password"
             inputMode="text"
             autoComplete="current-password"
-            placeholder="••••••"
+            placeholder={role === "adviser" ? "Enter PIN" : "Enter password or PIN"}
             value={pin}
             onChange={handlePinChange}
-            maxLength={6}
             disabled={isLoading}
-            className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium tracking-[0.3em] placeholder:text-gray-400 placeholder:tracking-normal focus:bg-white focus:text-gray-900 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium tracking-[0.2em] placeholder:text-gray-400 placeholder:tracking-normal focus:bg-white focus:text-gray-900 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           />
         </div>
       </div>

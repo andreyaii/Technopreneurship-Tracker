@@ -82,6 +82,15 @@ export function AuthProvider({ children }) {
             ? "Adviser ID or PIN is incorrect."
             : "Student number or PIN is incorrect.",
       };
+    } catch (err) {
+      return {
+        success: false,
+        message:
+          err?.message ||
+          (role === "adviser"
+            ? "Adviser ID or PIN is incorrect."
+            : "Student number or PIN is incorrect."),
+      };
     } finally {
       setIsLoading(false);
     }

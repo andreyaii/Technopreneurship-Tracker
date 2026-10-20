@@ -39,12 +39,14 @@ export async function authenticateStudent(studentNo, pin) {
   try {
     const data = await postAction({
       action: "loginStudent",
-      studentNo: studentNo.trim(),
-      pin: pin.trim(),
+      studentNo: String(studentNo || "").trim(),
+      pin: String(pin ?? ""),
     });
 
     if (!data.success || !data.student) {
-      return null;
+      const error = new Error(data.message || "Invalid student number or PIN.");
+      error.apiMessage = data.message;
+      throw error;
     }
 
     const s = data.student;
@@ -63,7 +65,7 @@ export async function authenticateStudent(studentNo, pin) {
     };
   } catch (err) {
     console.error("Student login error:", err);
-    return null;
+    throw err;
   }
 }
 
@@ -76,12 +78,14 @@ export async function authenticateAdviser(adviserNo, pin) {
   try {
     const data = await postAction({
       action: "loginAdviser",
-      adviserNo: adviserNo.trim(),
-      pin: pin.trim(),
+      adviserNo: String(adviserNo || "").trim(),
+      pin: String(pin ?? ""),
     });
 
     if (!data.success || !data.adviser) {
-      return null;
+      const error = new Error(data.message || "Invalid Adviser ID or PIN.");
+      error.apiMessage = data.message;
+      throw error;
     }
 
     const a = data.adviser;
@@ -94,7 +98,7 @@ export async function authenticateAdviser(adviserNo, pin) {
     };
   } catch (err) {
     console.error("Adviser login error:", err);
-    return null;
+    throw err;
   }
 }
 

@@ -169,9 +169,9 @@ function getOrCreateSheet(sheetName, defaultHeaders) {
  */
 function handleLoginStudent(body) {
   const studentNo = String(body.studentNo || "").trim();
-  const pin = String(body.pin || "").trim();
+  const pin = body.pin !== undefined && body.pin !== null ? String(body.pin) : "";
 
-  if (!studentNo || !pin) {
+  if (!studentNo || !pin || pin.trim() === "") {
     return { success: false, message: "Student number and PIN are required." };
   }
 
@@ -181,7 +181,9 @@ function handleLoginStudent(body) {
     return { success: false, message: "Students sheet not found." };
   }
 
-  const data = sheet.getDataRange().getValues();
+  const dataRange = sheet.getDataRange();
+  const data = dataRange.getValues();
+  const displayData = dataRange.getDisplayValues();
   if (data.length < 2) {
     return { success: false, message: "No student records found." };
   }
@@ -219,10 +221,23 @@ function handleLoginStudent(body) {
 
     const row = data[r];
     const rowStudentNo = String(row[colIndex.studentNo] || "").trim();
-    const rowPin = String(row[colIndex.pin] || "").trim();
 
     if (rowStudentNo.toLowerCase() === studentNo.toLowerCase()) {
-      if (rowPin !== pin) {
+      // Retrieve stored password/PIN preserving leading zeros and formatting
+      const displayVal = displayData && displayData[r] ? String(displayData[r][colIndex.pin] || "") : "";
+      const rawVal = String(row[colIndex.pin] !== null && row[colIndex.pin] !== undefined ? row[colIndex.pin] : "");
+      const storedPin = displayVal.trim() !== "" ? displayVal : rawVal;
+
+      // Handle unconfigured/empty credentials safely (Requirement 3)
+      if (!storedPin || storedPin.trim() === "") {
+        return {
+          success: false,
+          message: "Account credentials are not configured. Please contact your adviser or administrator.",
+        };
+      }
+
+      // Validate credentials as strings without numeric conversion
+      if (storedPin !== pin && storedPin.trim() !== pin.trim()) {
         return { success: false, message: "Invalid student number or PIN." };
       }
 
@@ -318,9 +333,9 @@ function handleLoginStudent(body) {
  */
 function handleLoginAdviser(body) {
   const adviserNo = String(body.adviserNo || "").trim();
-  const pin = String(body.pin || "").trim();
+  const pin = body.pin !== undefined && body.pin !== null ? String(body.pin) : "";
 
-  if (!adviserNo || !pin) {
+  if (!adviserNo || !pin || pin.trim() === "") {
     return { success: false, message: "Adviser ID and PIN are required." };
   }
 
@@ -332,7 +347,9 @@ function handleLoginAdviser(body) {
     sheet.appendRow(["guest", "Guest Adviser", "1234", "guest"]);
   }
 
-  const refreshedData = sheet.getDataRange().getValues();
+  const refreshedRange = sheet.getDataRange();
+  const refreshedData = refreshedRange.getValues();
+  const displayData = refreshedRange.getDisplayValues();
   const headers = refreshedData[0].map(h => String(h).trim().toUpperCase());
   const colIndex = {
     adviserId: headers.indexOf("ADVISERID"),
@@ -344,10 +361,20 @@ function handleLoginAdviser(body) {
   for (let r = 1; r < refreshedData.length; r++) {
     const row = refreshedData[r];
     const rowId = String(row[colIndex.adviserId] || "").trim();
-    const rowPin = String(row[colIndex.pin] || "").trim();
 
     if (rowId.toLowerCase() === adviserNo.toLowerCase()) {
-      if (rowPin !== pin) {
+      const displayVal = displayData && displayData[r] ? String(displayData[r][colIndex.pin] || "") : "";
+      const rawVal = String(row[colIndex.pin] !== null && row[colIndex.pin] !== undefined ? row[colIndex.pin] : "");
+      const storedPin = displayVal.trim() !== "" ? displayVal : rawVal;
+
+      if (!storedPin || storedPin.trim() === "") {
+        return {
+          success: false,
+          message: "Account credentials are not configured. Please contact your adviser or administrator.",
+        };
+      }
+
+      if (storedPin !== pin && storedPin.trim() !== pin.trim()) {
         return { success: false, message: "Invalid Adviser ID or PIN." };
       }
 
@@ -427,7 +454,9 @@ function handleGetStudent(body) {
   const sheet = ss.getSheetByName(SHEET_NAMES.STUDENTS);
   if (!sheet) return { success: false, message: "Students sheet not found." };
 
-  const data = sheet.getDataRange().getValues();
+  const dataRange = sheet.getDataRange();
+  const data = dataRange.getValues();
+  const displayData = dataRange.getDisplayValues();
   const headers = data[0].map(h => String(h).trim().toUpperCase());
   const colStudentNo = headers.indexOf("STUDENT NO.");
   const colPin = headers.indexOf("PIN");
@@ -442,11 +471,20 @@ function handleGetStudent(body) {
     if (r === AVAILABILITY_ROW_INDEX - 1) continue;
     const row = data[r];
     const rowStudentNo = String(row[colStudentNo] || "").trim();
-    const rowPin = String(row[colPin] || "").trim();
 
     if (rowStudentNo.toLowerCase() === studentNo.toLowerCase()) {
-      if (!isAdviser && (!pin || pin !== rowPin)) {
-        return { success: false, message: "Unauthorized: PIN or Adviser authentication required." };
+      if (!isAdviser) {
+        const displayVal = displayData && displayData[r] ? String(displayData[r][colPin] || "") : "";
+        const rawVal = String(row[colPin] !== null && row[colPin] !== undefined ? row[colPin] : "");
+        const storedPin = displayVal.trim() !== "" ? displayVal : rawVal;
+
+        if (!storedPin || storedPin.trim() === "") {
+          return { success: false, message: "Account credentials are not configured. Please contact your adviser or administrator." };
+        }
+
+        if (!pin || (storedPin !== pin && storedPin.trim() !== pin.trim())) {
+          return { success: false, message: "Unauthorized: PIN or Adviser authentication required." };
+        }
       }
 
       return {
