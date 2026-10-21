@@ -14,26 +14,75 @@ if (!API_URL) {
  *
  * Returns the parsed JSON response, or throws on network/HTTP error.
  */
-export async function postAction(payload) {
+export async function postAction(payload, maxRetries = 1, timeoutMs = 20000) {
   if (!API_URL) {
     throw new Error(
       "VITE_API_URL is not configured. Please define VITE_API_URL in your .env.local file or Vercel Environment Variables."
     );
   }
 
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8",
-    },
-    body: JSON.stringify(payload),
-  });
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    let rawText;
+    try {
+      response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
 
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      rawText = await response.text();
+    } catch (err) {
+      if (controller.signal.aborted) {
+        throw new Error(
+          `API request timed out after ${timeoutMs}ms for action "${payload?.action || "unknown"}".`
+        );
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    const trimmed = (rawText || "").trim();
+
+    if (!response.ok) {
+      throw new Error(`API request failed (HTTP ${response.status}: ${response.statusText}).`);
+    }
+
+    // Google Apps Script doGet() returns plain-text "Technopreneurship Tracker API is running."
+    // when a POST request is redirected to GET by Google's infrastructure.
+    if (trimmed.startsWith("Technopreneurship Tracker API is running")) {
+      if (attempt < maxRetries) {
+        // Wait briefly for transient redirect to clear before retrying
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        continue;
+      }
+      throw new Error(
+        "The server returned a plain-text status response instead of JSON. The request may have been redirected as a GET."
+      );
+    }
+
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      if (trimmed.startsWith("<")) {
+        throw new Error(
+          "The Google Apps Script API returned an HTML page instead of JSON. Please check spreadsheet deployment permissions."
+        );
+      }
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        continue;
+      }
+      throw new Error(
+        `Unexpected non-JSON response received from API for action "${payload?.action || "unknown"}".`
+      );
+    }
   }
-
-  return response.json();
 }
 
 /**

@@ -374,9 +374,24 @@ export async function getAllProjects() {
     }
 
     const groups = Array.isArray(data.data) ? data.data : [];
-    return groups.filter(
-      (group) => typeof group?.title === "string" && group.title.trim().length > 0
-    );
+    return groups
+      .filter(
+        (group) =>
+          typeof group?.groupCode === "string" && group.groupCode.trim().length > 0
+      )
+      .map((group) => {
+        const groupCode = group.groupCode.trim();
+        const title =
+          typeof group.title === "string" && group.title.trim()
+            ? group.title.trim()
+            : "None";
+        const description =
+          typeof group.description === "string" && group.description.trim()
+            ? group.description.trim()
+            : `${groupCode}`;
+
+        return { ...group, groupCode, title, description };
+      });
   } catch (err) {
     console.error("getAllProjects error:", err);
     throw err;
@@ -531,4 +546,197 @@ export async function addRating(targetType, groupCode, studentRecord, adviserNam
     throw new Error(data.message || "Failed to save rating.");
   }
   return data;
+}
+
+// ---------------------------------------------------------------------------
+// Adviser Dashboard Statistics & Activity Completion Overview
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches dashboard statistics and deliverable completion overview for advisers.
+ *
+ * 1. Checks backend `getAdviserDashboardStats` action first (if supported by deployed Apps Script).
+ * 2. Falls back to composing the existing `getAllProjects`, `getGroupMembers`, and `getGroupDeliverables`
+ *    API endpoints in parallel.
+ *
+ * The backend counts student and group rows within the requested sheet ranges
+ * and counts deliverable columns J-T. The fallback retains the same group rows.
+ *
+ * Computes:
+ *  - totalStudents: populated TEC_CSIT student rows
+ *  - totalGroups: populated Groups sheet rows, including groups without titles
+ *  - totalActivities: deliverable columns monitored in the tracker
+ *  - overallCompletionRate: (completed required entries / total required entries) * 100
+ *  - activities: list of activities sorted ascending by completion rate (lowest first)
+ */
+export async function getAdviserDashboardStats(providedProjects = null) {
+  try {
+    const response = await postAction(
+      { action: "getAdviserDashboardStats" },
+      0,
+      12000
+    );
+    if (response.success && response.data) {
+      return response.data;
+    }
+  } catch (err) {
+    console.warn("Adviser dashboard stats endpoint unavailable; using fallback:", err);
+  }
+
+  // Use provided projects if available, otherwise fetch
+  const projects = Array.isArray(providedProjects) && providedProjects.length > 0
+    ? providedProjects
+    : await getAllProjects();
+
+  const validProjects = projects.filter(
+    (p) =>
+      typeof p?.groupCode === "string" &&
+      p.groupCode.trim().length > 0 &&
+      typeof p?.title === "string"
+  );
+
+  // Deduplicate project groups by groupCode
+  const seenGroupCodes = new Set();
+  const distinctProjects = [];
+  for (const p of validProjects) {
+    const code = p.groupCode.trim();
+    if (!seenGroupCodes.has(code.toLowerCase())) {
+      seenGroupCodes.add(code.toLowerCase());
+      distinctProjects.push(p);
+    }
+  }
+
+  if (distinctProjects.length === 0) {
+    return {
+      totalStudents: 0,
+      totalGroups: 0,
+      totalActivities: 0,
+      overallCompletionRate: 0,
+      completedEntries: 0,
+      totalRequiredEntries: 0,
+      activities: [],
+    };
+  }
+
+  // Fetch a few groups at a time to limit Apps Script concurrency without
+  // making one serial round trip for every pair of groups.
+  const groupResults = [];
+  const chunkSize = 6;
+  for (let i = 0; i < distinctProjects.length; i += chunkSize) {
+    const chunk = distinctProjects.slice(i, i + chunkSize);
+    const chunkResults = await Promise.all(
+      chunk.map(async (project) => {
+        const [members, deliverables] = await Promise.all([
+          getGroupMembers(project.groupCode).catch(() => []),
+          getGroupDeliverables(project.groupCode).catch(() => []),
+        ]);
+        return {
+          project,
+          members: Array.isArray(members) ? members : [],
+          deliverables: Array.isArray(deliverables) ? deliverables : [],
+        };
+      })
+    );
+    groupResults.push(...chunkResults);
+  }
+
+  // Fetch total student count from the lightweight backend endpoint so it matches
+  // the spreadsheet's STUDENT NO. column exactly (not just grouped students).
+  let totalStudents = groupResults.reduce(
+    (total, { members }) => total + members.length,
+    0
+  );
+  try {
+    const countResp = await postAction({ action: "getTotalStudents" }, 0, 8000);
+    if (countResp.success && countResp.data && typeof countResp.data.totalStudents === "number") {
+      totalStudents = countResp.data.totalStudents;
+    }
+  } catch (err) {
+    console.warn("getTotalStudents fallback failed; using group member sum:", err);
+  }
+
+  // Aggregate activity deliverables across all groups
+  const activityMap = new Map();
+  let totalCompletedEntries = 0;
+  let totalRequiredEntries = 0;
+
+  groupResults.forEach(({ members, deliverables, project }) => {
+    const groupMemberCount = members.length;
+    deliverables.forEach((deliv) => {
+      const title = String(deliv?.title || "").trim();
+      if (!title) return;
+
+      if (!activityMap.has(title)) {
+        activityMap.set(title, {
+          id: deliv.id || `act-${activityMap.size + 1}`,
+          title: title,
+          type: deliv.type || "document",
+          completedCount: 0,
+          totalRequired: 0,
+          groupBreakdown: [],
+        });
+      }
+
+      const entry = activityMap.get(title);
+      const completedInGroup = Number(deliv.submittedCount) || 0;
+      const requiredInGroup =
+        groupMemberCount > 0
+          ? groupMemberCount
+          : deliv.totalMembers !== undefined &&
+            deliv.totalMembers !== null &&
+            deliv.totalMembers > 0
+          ? Number(deliv.totalMembers)
+          : 0;
+
+      entry.completedCount += completedInGroup;
+      entry.totalRequired += requiredInGroup;
+      entry.groupBreakdown.push({
+        groupCode: project.groupCode,
+        groupTitle: project.title,
+        completed: completedInGroup,
+        required: requiredInGroup,
+        status:
+          deliv.status ||
+          (completedInGroup >= requiredInGroup && requiredInGroup > 0
+            ? "Submitted"
+            : "Not Available"),
+      });
+
+      totalCompletedEntries += completedInGroup;
+      totalRequiredEntries += requiredInGroup;
+    });
+  });
+
+  // Transform and sort activities from lowest completion rate to highest.
+  // Use totalStudents as the denominator so "out of" matches the Total Students card.
+  const activities = Array.from(activityMap.values()).map((act) => {
+    const rate =
+      totalStudents > 0
+        ? Math.round((act.completedCount / totalStudents) * 1000) / 10
+        : 0;
+    return {
+      ...act,
+      totalRequired: totalStudents,
+      completionRate: rate,
+    };
+  });
+
+  activities.sort((a, b) => a.completionRate - b.completionRate);
+
+  // Recompute totals using the consistent totalStudents denominator
+  const correctedTotalRequired = totalStudents * activities.length;
+  const overallRate =
+    correctedTotalRequired > 0
+      ? Math.round((totalCompletedEntries / correctedTotalRequired) * 1000) / 10
+      : 0;
+
+  return {
+    totalStudents,
+    totalGroups: distinctProjects.length,
+    totalActivities: activities.length,
+    overallCompletionRate: overallRate,
+    completedEntries: totalCompletedEntries,
+    totalRequiredEntries: correctedTotalRequired,
+    activities,
+  };
 }

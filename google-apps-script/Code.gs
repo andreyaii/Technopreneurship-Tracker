@@ -119,6 +119,15 @@ function doPost(e) {
       case "addRating":
         return jsonResponse(handleAddRating(body));
 
+      // ── ADDED: adviser dashboard stats ──────────────────────────
+      case "getAdviserStats":
+      case "getAdviserDashboardStats":
+        return jsonResponse(handleGetAdviserDashboardStats());
+
+      case "getTotalStudents":
+        return jsonResponse(handleGetTotalStudents());
+      // ────────────────────────────────────────────────────────────
+
       default:
         return jsonResponse({
           success: false,
@@ -169,9 +178,9 @@ function getOrCreateSheet(sheetName, defaultHeaders) {
  */
 function handleLoginStudent(body) {
   const studentNo = String(body.studentNo || "").trim();
-  const pin = body.pin !== undefined && body.pin !== null ? String(body.pin) : "";
+  const pin = String(body.pin || "").trim();
 
-  if (!studentNo || !pin || pin.trim() === "") {
+  if (!studentNo || !pin) {
     return { success: false, message: "Student number and PIN are required." };
   }
 
@@ -181,9 +190,7 @@ function handleLoginStudent(body) {
     return { success: false, message: "Students sheet not found." };
   }
 
-  const dataRange = sheet.getDataRange();
-  const data = dataRange.getValues();
-  const displayData = dataRange.getDisplayValues();
+  const data = sheet.getDataRange().getValues();
   if (data.length < 2) {
     return { success: false, message: "No student records found." };
   }
@@ -221,23 +228,10 @@ function handleLoginStudent(body) {
 
     const row = data[r];
     const rowStudentNo = String(row[colIndex.studentNo] || "").trim();
+    const rowPin = String(row[colIndex.pin] || "").trim();
 
     if (rowStudentNo.toLowerCase() === studentNo.toLowerCase()) {
-      // Retrieve stored password/PIN preserving leading zeros and formatting
-      const displayVal = displayData && displayData[r] ? String(displayData[r][colIndex.pin] || "") : "";
-      const rawVal = String(row[colIndex.pin] !== null && row[colIndex.pin] !== undefined ? row[colIndex.pin] : "");
-      const storedPin = displayVal.trim() !== "" ? displayVal : rawVal;
-
-      // Handle unconfigured/empty credentials safely (Requirement 3)
-      if (!storedPin || storedPin.trim() === "") {
-        return {
-          success: false,
-          message: "Account credentials are not configured. Please contact your adviser or administrator.",
-        };
-      }
-
-      // Validate credentials as strings without numeric conversion
-      if (storedPin !== pin && storedPin.trim() !== pin.trim()) {
+      if (rowPin !== pin) {
         return { success: false, message: "Invalid student number or PIN." };
       }
 
@@ -333,9 +327,9 @@ function handleLoginStudent(body) {
  */
 function handleLoginAdviser(body) {
   const adviserNo = String(body.adviserNo || "").trim();
-  const pin = body.pin !== undefined && body.pin !== null ? String(body.pin) : "";
+  const pin = String(body.pin || "").trim();
 
-  if (!adviserNo || !pin || pin.trim() === "") {
+  if (!adviserNo || !pin) {
     return { success: false, message: "Adviser ID and PIN are required." };
   }
 
@@ -347,9 +341,7 @@ function handleLoginAdviser(body) {
     sheet.appendRow(["guest", "Guest Adviser", "1234", "guest"]);
   }
 
-  const refreshedRange = sheet.getDataRange();
-  const refreshedData = refreshedRange.getValues();
-  const displayData = refreshedRange.getDisplayValues();
+  const refreshedData = sheet.getDataRange().getValues();
   const headers = refreshedData[0].map(h => String(h).trim().toUpperCase());
   const colIndex = {
     adviserId: headers.indexOf("ADVISERID"),
@@ -361,20 +353,10 @@ function handleLoginAdviser(body) {
   for (let r = 1; r < refreshedData.length; r++) {
     const row = refreshedData[r];
     const rowId = String(row[colIndex.adviserId] || "").trim();
+    const rowPin = String(row[colIndex.pin] || "").trim();
 
     if (rowId.toLowerCase() === adviserNo.toLowerCase()) {
-      const displayVal = displayData && displayData[r] ? String(displayData[r][colIndex.pin] || "") : "";
-      const rawVal = String(row[colIndex.pin] !== null && row[colIndex.pin] !== undefined ? row[colIndex.pin] : "");
-      const storedPin = displayVal.trim() !== "" ? displayVal : rawVal;
-
-      if (!storedPin || storedPin.trim() === "") {
-        return {
-          success: false,
-          message: "Account credentials are not configured. Please contact your adviser or administrator.",
-        };
-      }
-
-      if (storedPin !== pin && storedPin.trim() !== pin.trim()) {
+      if (rowPin !== pin) {
         return { success: false, message: "Invalid Adviser ID or PIN." };
       }
 
@@ -454,9 +436,7 @@ function handleGetStudent(body) {
   const sheet = ss.getSheetByName(SHEET_NAMES.STUDENTS);
   if (!sheet) return { success: false, message: "Students sheet not found." };
 
-  const dataRange = sheet.getDataRange();
-  const data = dataRange.getValues();
-  const displayData = dataRange.getDisplayValues();
+  const data = sheet.getDataRange().getValues();
   const headers = data[0].map(h => String(h).trim().toUpperCase());
   const colStudentNo = headers.indexOf("STUDENT NO.");
   const colPin = headers.indexOf("PIN");
@@ -471,20 +451,11 @@ function handleGetStudent(body) {
     if (r === AVAILABILITY_ROW_INDEX - 1) continue;
     const row = data[r];
     const rowStudentNo = String(row[colStudentNo] || "").trim();
+    const rowPin = String(row[colPin] || "").trim();
 
     if (rowStudentNo.toLowerCase() === studentNo.toLowerCase()) {
-      if (!isAdviser) {
-        const displayVal = displayData && displayData[r] ? String(displayData[r][colPin] || "") : "";
-        const rawVal = String(row[colPin] !== null && row[colPin] !== undefined ? row[colPin] : "");
-        const storedPin = displayVal.trim() !== "" ? displayVal : rawVal;
-
-        if (!storedPin || storedPin.trim() === "") {
-          return { success: false, message: "Account credentials are not configured. Please contact your adviser or administrator." };
-        }
-
-        if (!pin || (storedPin !== pin && storedPin.trim() !== pin.trim())) {
-          return { success: false, message: "Unauthorized: PIN or Adviser authentication required." };
-        }
+      if (!isAdviser && (!pin || pin !== rowPin)) {
+        return { success: false, message: "Unauthorized: PIN or Adviser authentication required." };
       }
 
       return {
@@ -1070,6 +1041,246 @@ function handleAddRating(body) {
     },
   };
 }
+
+// ============================================================================
+// ADDED: Adviser Dashboard Stats
+// ============================================================================
+
+/**
+ * Helper: findHeaderIndex
+ * Returns the index of the first matching header from a list of candidates.
+ */
+function findHeaderIndex(headers, candidates) {
+  for (let i = 0; i < candidates.length; i++) {
+    const index = headers.indexOf(candidates[i]);
+    if (index !== -1) return index;
+  }
+  return -1;
+}
+
+/**
+ * Action: getTotalStudents
+ * Lightweight action — counts only rows with a non-empty STUDENT NO. in TEC_CSIT,
+ * excluding the availability flag row (row 539).
+ * Used by the frontend fallback so Total Students always matches the spreadsheet.
+ */
+function handleGetTotalStudents() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAMES.STUDENTS);
+  if (!sheet) {
+    return { success: false, message: "Students sheet not found." };
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = (data[0] || []).map(function (h) {
+    return String(h || "").trim().toUpperCase();
+  });
+  const colStudentNo = headers.indexOf("STUDENT NO.");
+
+  let count = 0;
+  for (let r = 1; r < data.length; r++) {
+    if (r === AVAILABILITY_ROW_INDEX - 1) continue; // skip availability flag row
+    const sNo = colStudentNo !== -1 ? String(data[r][colStudentNo] || "").trim() : "";
+    if (sNo) count++;
+  }
+
+  return { success: true, data: { totalStudents: count } };
+}
+
+/**
+ * Action: getAdviserDashboardStats
+ * Calculates overall statistics and deliverable completion rates directly from Google Sheets.
+ *
+ * Reads:
+ *  - "Groups" sheet: all populated group rows
+ *  - "TEC_CSIT" sheet: deliverable columns J-T (indices 9-19)
+ *
+ * Computes:
+ *  - totalStudents: rows with a non-empty STUDENT NO. (excluding availability row)
+ *  - totalGroups: populated group rows in the Groups sheet
+ *  - totalActivities: deliverable headers in columns J-T
+ *  - overallCompletionRate: (completed required entries / total required entries) * 100
+ *  - activities: sorted ascending by completion rate (lowest first)
+ */
+function handleGetAdviserDashboardStats() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const groupsSheet = ss.getSheetByName(SHEET_NAMES.GROUPS);
+  const studentsSheet = ss.getSheetByName(SHEET_NAMES.STUDENTS);
+
+  if (!groupsSheet || !studentsSheet) {
+    return {
+      success: false,
+      message: "Required sheet(s) not found.",
+    };
+  }
+
+  // 1. Count listed groups and map them for completion breakdowns.
+  const groupsData = groupsSheet.getDataRange().getValues();
+  const validGroupMap = {}; // groupCode (lower) -> { groupCode, title }
+  let totalGroupRows = 0;
+
+  if (groupsData.length >= 2) {
+    const gHeaders = groupsData[0].map(function (h) {
+      return String(h || "").trim().toUpperCase();
+    });
+    const colGroup = findHeaderIndex(gHeaders, ["GROUP", "GROUP NUMBER", "GROUP NO", "GROUP NO."]);
+    const colTitle = findHeaderIndex(gHeaders, ["PROJECT TITLE", "TITLE"]);
+
+    for (let r = 1; r < groupsData.length; r++) {
+      const row = groupsData[r];
+      const gCode = colGroup !== -1 ? String(row[colGroup] || "").trim() : "";
+      const title = colTitle !== -1 ? String(row[colTitle] || "").trim() : "";
+      if (gCode) {
+        totalGroupRows++;
+        const lower = gCode.toLowerCase();
+        if (!validGroupMap[lower]) {
+          validGroupMap[lower] = { groupCode: gCode, title: title || "None" };
+        }
+      }
+    }
+  }
+
+  // 2. Read students and deliverables
+  const sData = studentsSheet.getDataRange().getValues();
+  const sHeaders = (sData[0] || []).map(function (h) {
+    return String(h || "").trim().toUpperCase();
+  });
+  const deliverableColumns = getDeliverableColumns(sData[0] || []).filter(function (deliv) {
+    return deliv.index >= 9 && deliv.index <= 19;
+  });
+  const colGroup = sHeaders.indexOf("GROUP");
+  const colStudentNo = sHeaders.indexOf("STUDENT NO.");
+
+  // Count only rows with a real student number (excludes blank rows & availability row)
+  let totalStudentCount = 0;
+  for (let r = 1; r < sData.length; r++) {
+    if (r === AVAILABILITY_ROW_INDEX - 1) continue;
+    const sNo = colStudentNo !== -1 ? String(sData[r][colStudentNo] || "").trim() : "";
+    if (sNo) totalStudentCount++;
+  }
+
+  const activityList = [];
+  const activityMap = {};
+
+  deliverableColumns.forEach(function (deliv) {
+    const actObj = {
+      id: deliv.id,
+      title: deliv.title,
+      type: deliv.type,
+      completedCount: 0,
+      totalRequired: 0,
+      groupBreakdown: [],
+    };
+    activityMap[deliv.index] = actObj;
+    activityList.push(actObj);
+  });
+
+  // Track group counts
+  const groupStatsMap = {}; // groupCode (lower) -> { totalMembers, completedPerDeliv: { [colIndex]: count } }
+
+  for (let r = 1; r < sData.length; r++) {
+    if (r === AVAILABILITY_ROW_INDEX - 1) continue; // skip availability flag row
+    const row = sData[r];
+    const rowStudentNo = colStudentNo !== -1 ? String(row[colStudentNo] || "").trim() : "";
+    if (!rowStudentNo) continue; // skip blank/metadata rows
+    const rowGroup = colGroup !== -1 ? String(row[colGroup] || "").trim().toLowerCase() : "";
+
+    deliverableColumns.forEach(function (deliv) {
+      const val = row[deliv.index];
+      const isUnavailable = isNotAvailableValue(val);
+      if (!isUnavailable && val !== "" && val !== null && val !== undefined) {
+        activityMap[deliv.index].completedCount++;
+      }
+    });
+
+    // Group breakdowns only include rows assigned to a group listed in Groups.
+    if (!validGroupMap[rowGroup]) continue;
+
+    if (!groupStatsMap[rowGroup]) {
+      groupStatsMap[rowGroup] = {
+        totalMembers: 0,
+        completedPerDeliv: {},
+      };
+    }
+
+    const gStat = groupStatsMap[rowGroup];
+    gStat.totalMembers++;
+    deliverableColumns.forEach(function (deliv) {
+      const val = row[deliv.index];
+      if (!isNotAvailableValue(val) && val !== "" && val !== null && val !== undefined) {
+        gStat.completedPerDeliv[deliv.index] = (gStat.completedPerDeliv[deliv.index] || 0) + 1;
+      }
+    });
+  }
+
+  deliverableColumns.forEach(function (deliv) {
+    const act = activityMap[deliv.index];
+    // Use totalStudentCount so "out of X" matches the Total Students card
+    act.totalRequired = totalStudentCount;
+
+    Object.keys(validGroupMap).forEach(function (lowerCode) {
+      const grp = validGroupMap[lowerCode];
+      const gStat = groupStatsMap[lowerCode];
+      const membersInGroup = gStat ? gStat.totalMembers : 0;
+      const completedInGroup = (gStat && gStat.completedPerDeliv[deliv.index]) || 0;
+
+      act.groupBreakdown.push({
+        groupCode: grp.groupCode,
+        groupTitle: grp.title,
+        completed: completedInGroup,
+        required: membersInGroup,
+        status: completedInGroup >= membersInGroup && membersInGroup > 0 ? "Submitted" : "Not Available",
+      });
+    });
+  });
+
+  const activities = activityList.map(function (act) {
+    const rate = act.totalRequired > 0
+      ? Math.round((act.completedCount / act.totalRequired) * 1000) / 10
+      : 0;
+    return {
+      id: act.id,
+      title: act.title,
+      type: act.type,
+      completedCount: act.completedCount,
+      totalRequired: act.totalRequired,
+      completionRate: rate,
+      groupBreakdown: act.groupBreakdown,
+    };
+  });
+
+  let totalCompletedEntries = 0;
+  let totalRequiredEntries = 0;
+  activities.forEach(function (act) {
+    totalCompletedEntries += act.completedCount;
+    totalRequiredEntries += act.totalRequired;
+  });
+
+  // Sort lowest to highest
+  activities.sort(function (a, b) {
+    return a.completionRate - b.completionRate;
+  });
+
+  const overallRate = totalRequiredEntries > 0
+    ? Math.round((totalCompletedEntries / totalRequiredEntries) * 1000) / 10
+    : 0;
+
+  return {
+    success: true,
+    data: {
+      totalStudents: totalStudentCount,
+      totalGroups: totalGroupRows,
+      totalActivities: activities.length,
+      overallCompletionRate: overallRate,
+      completedEntries: totalCompletedEntries,
+      totalRequiredEntries: totalRequiredEntries,
+      activities: activities,
+    },
+  };
+}
+
+// ============================================================================
+
 function doGet() {
   return ContentService
     .createTextOutput("Technopreneurship Tracker API is running.")
@@ -1102,151 +1313,6 @@ const CCS_TEC_DESTINATION_SHEET =
   'TEC_CSIT';
 
 
-function synchronizeCCSTECTracker() {
-
-  try {
-
-    // ------------------------------------------------------------
-    // OPEN SOURCE
-    // ------------------------------------------------------------
-
-    const sourceSS =
-      SpreadsheetApp.openById(CCS_TEC_SOURCE_ID);
-
-    const sourceSheet =
-      sourceSS.getSheetByName(CCS_TEC_SOURCE_SHEET);
-
-    if (!sourceSheet) {
-      throw new Error(
-        'Source sheet "' +
-        CCS_TEC_SOURCE_SHEET +
-        '" was not found.'
-      );
-    }
-
-
-    // ------------------------------------------------------------
-    // READ SOURCE DATA
-    // ------------------------------------------------------------
-
-    const sourceRange =
-      sourceSheet.getDataRange();
-
-    const data =
-      sourceRange.getValues();
-
-
-    // ------------------------------------------------------------
-    // OPEN DESTINATION
-    // ------------------------------------------------------------
-
-    const destinationSS =
-      SpreadsheetApp.openById(CCS_TEC_DESTINATION_ID);
-
-    const destinationSheet =
-      destinationSS.getSheetByName(CCS_TEC_DESTINATION_SHEET);
-
-    if (!destinationSheet) {
-      throw new Error(
-        'Destination sheet "' +
-        CCS_TEC_DESTINATION_SHEET +
-        '" was not found.'
-      );
-    }
-
-
-    // ------------------------------------------------------------
-    // CLEAR OLD DATA
-    // ------------------------------------------------------------
-
-    destinationSheet.clearContent();
-
-
-    // ------------------------------------------------------------
-    // STOP IF SOURCE IS EMPTY
-    // ------------------------------------------------------------
-
-    if (
-      data.length === 0 ||
-      data[0].length === 0
-    ) {
-      console.log('Source sheet is empty.');
-      return;
-    }
-
-
-    // ------------------------------------------------------------
-    // MAKE SURE DESTINATION HAS ENOUGH ROWS
-    // ------------------------------------------------------------
-
-    if (
-      destinationSheet.getMaxRows() <
-      data.length
-    ) {
-
-      destinationSheet.insertRowsAfter(
-        destinationSheet.getMaxRows(),
-        data.length -
-        destinationSheet.getMaxRows()
-      );
-
-    }
-
-
-    // ------------------------------------------------------------
-    // MAKE SURE DESTINATION HAS ENOUGH COLUMNS
-    // ------------------------------------------------------------
-
-    if (
-      destinationSheet.getMaxColumns() <
-      data[0].length
-    ) {
-
-      destinationSheet.insertColumnsAfter(
-        destinationSheet.getMaxColumns(),
-        data[0].length -
-        destinationSheet.getMaxColumns()
-      );
-
-    }
-
-
-    // ------------------------------------------------------------
-    // WRITE DATA
-    // ------------------------------------------------------------
-
-    destinationSheet
-      .getRange(
-        1,
-        1,
-        data.length,
-        data[0].length
-      )
-      .setValues(data);
-
-
-    // ------------------------------------------------------------
-    // LOG RESULT
-    // ------------------------------------------------------------
-
-    console.log(
-      'CCS_TEC_Tracker synchronization completed: ' +
-      data.length +
-      ' rows × ' +
-      data[0].length +
-      ' columns.'
-    );
-
-  } catch (error) {
-
-    console.error(
-      'CCS_TEC_Tracker synchronization failed: ' +
-      error.toString()
-    );
-
-    throw error;
-  }
-}
 function synchronizeCCSTECTracker() {
 
   try {

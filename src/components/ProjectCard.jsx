@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { Users, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import ProgressBar from "./ProgressBar";
 import { useAuth } from "../context/AuthContext";
+import { getProjectMemberCount } from "../services/projectService";
 
 /**
  * All Projects overview card.
@@ -12,12 +14,38 @@ import { useAuth } from "../context/AuthContext";
 export default function ProjectCard({ project }) {
   const { student } = useAuth();
   const isAdviser = student?.role === "adviser";
+  const groupCode =
+    typeof project?.groupCode === "string" ? project.groupCode.trim() : "";
+  const [fetchedMemberCount, setFetchedMemberCount] = useState(null);
+  const hasMemberCount = Number(project?.memberCount) > 0;
+  const memberCount = hasMemberCount
+    ? Number(project.memberCount)
+    : fetchedMemberCount;
+  const progress = project?.progress ?? 0;
 
-  if (!project || typeof project.title !== "string" || !project.title.trim()) {
-    return null;
-  }
+  useEffect(() => {
+    if (!groupCode || hasMemberCount) return undefined;
 
-  const { title, description, memberCount, progress } = project;
+    let isCurrent = true;
+    getProjectMemberCount(groupCode).then((count) => {
+      if (isCurrent) setFetchedMemberCount(count);
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [groupCode, hasMemberCount]);
+
+  if (!groupCode) return null;
+
+  const title =
+    typeof project.title === "string" && project.title.trim()
+      ? project.title.trim()
+      : "None";
+  const description =
+    typeof project.description === "string" && project.description.trim()
+      ? project.description.trim()
+      : `${groupCode}`;
 
   const cardContent = (
     <>
@@ -35,7 +63,9 @@ export default function ProjectCard({ project }) {
 
       <p className="inline-flex items-center gap-1.5 text-xs text-brand-black/60">
         <Users className="w-3.5 h-3.5" />
-        {memberCount} {memberCount === 1 ? "member" : "members"}
+        {memberCount === null
+          ? "Loading members..."
+          : `${memberCount} ${memberCount === 1 ? "member" : "members"}`}
       </p>
 
       <div>

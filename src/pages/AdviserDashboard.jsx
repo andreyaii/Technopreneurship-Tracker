@@ -1,53 +1,85 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Users2,
   ShieldCheck,
   FolderKanban,
   ChevronDown,
   Search,
+  RefreshCw,
 } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
-import { getAllProjects } from "../services/projectService";
+import { getAllProjects, getAdviserDashboardStats } from "../services/projectService";
 import AdviserCommentForm from "../components/AdviserCommentForm";
 import PaginatedGrid from "../components/PaginatedGrid";
+import AdviserStatsCards from "../components/AdviserStatsCards";
+import ActivityCompletionChart from "../components/ActivityCompletionChart";
 
 /**
  * AdviserDashboard
  *
  * Gives the authenticated adviser:
- *  1. A welcome header with their name/role
- *  2. A group selector (search + dropdown from all projects)
- *  3. On group selection: shows AdviserCommentForm (comments + ratings)
+ *  1. Header with welcome message & refresh control
+ *  2. Four summary statistics cards (Total Students, Project Groups, Total Activities, Overall Completion Rate)
+ *  3. Activity Completion Overview horizontal bar chart (sorted lowest to highest)
+ *  4. Group selector (search + dropdown from all projects)
+ *  5. On group selection: shows AdviserCommentForm (comments + ratings)
  */
 export default function AdviserDashboard() {
   const { student: adviser } = useAuth();
 
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [statsError, setStatsError] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setLoadingProjects(true);
+    setLoadingStats(true);
+    setStatsError(null);
+
+    let loadedProjects = [];
+
+    // 1. Load projects first so group selector always works independently
+    try {
+      loadedProjects = await getAllProjects();
+      setProjects(loadedProjects);
+    } catch (err) {
+      console.error("Failed to load projects:", err);
+      setProjects([]);
+    } finally {
+      setLoadingProjects(false);
+    }
+
+    // 2. Load statistics using the retrieved projects (avoids duplicate getGroups API call)
+    try {
+      const statsData = await getAdviserDashboardStats(loadedProjects);
+      setStats(statsData);
+    } catch (err) {
+      console.error("Failed to load statistics:", err);
+      setStatsError(err.message || "Failed to load dashboard statistics.");
+    } finally {
+      setLoadingStats(false);
+      setIsRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let isCurrent = true;
-    async function load() {
-      setLoadingProjects(true);
-      try {
-        const data = await getAllProjects();
-        if (isCurrent) setProjects(data);
-      } finally {
-        if (isCurrent) setLoadingProjects(false);
-      }
-    }
-    load();
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
+    loadData();
+  }, [loadData]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    loadData();
+  };
 
   const filtered = useMemo(() => {
     const validProjects = projects.filter(
-      (p) => typeof p?.title === "string" && p.title.trim().length > 0
+      (p) => typeof p?.groupCode === "string" && p.groupCode.trim().length > 0
     );
     const q = searchQuery.trim().toLowerCase();
     if (!q) return validProjects;
@@ -66,21 +98,50 @@ export default function AdviserDashboard() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <ShieldCheck className="w-5 h-5 text-brand-black/50" strokeWidth={2.25} />
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-black/40">
-            Adviser Mode
-          </span>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck className="w-5 h-5 text-brand-black/50" strokeWidth={2.25} />
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-black/40">
+              Adviser Mode
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-display font-bold">
+            Welcome,{" "}
+            <span className="text-brand-black">{adviser?.name || "Adviser"}</span>
+          </h1>
+          <p className="mt-1 text-sm text-brand-black/55">
+            Monitor student completion, activities, and post feedback or ratings.
+          </p>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-display font-bold">
-          Welcome,{" "}
-          <span className="text-brand-black">{adviser?.name || "Adviser"}</span>
-        </h1>
-        <p className="mt-1 text-sm text-brand-black/55">
-          Select a group to post feedback, comments, and ratings.
-        </p>
+
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={loadingStats || isRefreshing}
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-surface-border bg-white text-xs font-semibold text-brand-black/70 hover:text-brand-black hover:border-brand-black/30 hover:bg-surface-muted transition-all shadow-sm self-start sm:self-auto disabled:opacity-50"
+          aria-label="Refresh dashboard data"
+        >
+          <RefreshCw
+            className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-brand-black" : ""}`}
+          />
+          <span>{isRefreshing ? "Refreshing..." : "Refresh Data"}</span>
+        </button>
       </div>
+
+      {/* 1. Four Summary Cards */}
+      <AdviserStatsCards
+        stats={stats}
+        loading={loadingStats}
+        error={statsError}
+      />
+
+      {/* 2. Activity Completion Overview Chart */}
+      <ActivityCompletionChart
+        activities={stats?.activities || []}
+        loading={loadingStats}
+        error={statsError}
+      />
 
       {/* Group Selection */}
       <section className="rounded-2xl border border-surface-border bg-white p-5 sm:p-6 shadow-card">

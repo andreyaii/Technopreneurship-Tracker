@@ -16,10 +16,20 @@ export default function Projects() {
     let isCurrent = true;
     async function loadProjects() {
       setIsLoading(true);
-      const data = await getAllProjects();
-      if (isCurrent) {
-        setProjects(data);
-        setIsLoading(false);
+      try {
+        const data = await getAllProjects();
+        if (isCurrent) {
+          setProjects(data || []);
+        }
+      } catch (err) {
+        console.error("Failed to load projects:", err);
+        if (isCurrent) {
+          setProjects([]);
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       }
     }
     loadProjects();
@@ -30,11 +40,15 @@ export default function Projects() {
 
   const filtered = useMemo(() => {
     const validProjects = projects.filter(
-      (p) => typeof p?.title === "string" && p.title.trim().length > 0
+      (p) => typeof p?.groupCode === "string" && p.groupCode.trim().length > 0
     );
     const q = query.trim().toLowerCase();
     if (!q) return validProjects;
-    return validProjects.filter((p) => p.title.toLowerCase().includes(q));
+    return validProjects.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        p.groupCode.toLowerCase().includes(q)
+    );
   }, [projects, query]);
 
   return (
@@ -53,7 +67,7 @@ export default function Projects() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-black/35" />
           <input
             type="text"
-            placeholder="Search by title"
+            placeholder={student?.role === "adviser" ? "Search groups..." : "Search by title"}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-surface-border bg-white text-sm placeholder:text-brand-black/35 focus:border-brand-black outline-none transition-colors"
@@ -71,7 +85,11 @@ export default function Projects() {
             <FolderKanban className="w-5 h-5 text-brand-black/40" />
           </div>
           <p className="text-sm text-brand-black/50">
-            No projects match &ldquo;{query}&rdquo;.
+            {student?.role === "adviser"
+              ? "No groups match your search."
+              : query.trim()
+              ? `No projects match \u201C${query}\u201D.`
+              : "No projects match your search."}
           </p>
         </div>
       ) : (
