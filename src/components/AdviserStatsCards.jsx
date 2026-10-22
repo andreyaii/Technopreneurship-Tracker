@@ -15,7 +15,6 @@ export default function AdviserStatsCards({ stats, loading = false, error = null
       id: "total-students",
       title: "Total Students",
       value: loading ? "—" : stats?.totalStudents ?? 0,
-      subtext: "Rows 2–538 in TEC_CSIT",
       icon: Users,
       accent: "yellow",
     },
@@ -23,7 +22,6 @@ export default function AdviserStatsCards({ stats, loading = false, error = null
       id: "total-groups",
       title: "Total Project Groups",
       value: loading ? "—" : stats?.totalGroups ?? 0,
-      subtext: "Groups listed in the Groups sheet",
       icon: FolderKanban,
       accent: "neutral",
     },
@@ -31,7 +29,6 @@ export default function AdviserStatsCards({ stats, loading = false, error = null
       id: "total-activities",
       title: "Total Activities",
       value: loading ? "—" : stats?.totalActivities ?? 0,
-      subtext: "Monitored course deliverables",
       icon: ListChecks,
       accent: "neutral",
     },
@@ -41,10 +38,6 @@ export default function AdviserStatsCards({ stats, loading = false, error = null
       value: loading
         ? "—"
         : `${(stats?.overallCompletionRate ?? 0).toFixed(1)}%`,
-      subtext:
-        loading || !stats?.totalRequiredEntries
-          ? "Across all required entries"
-          : `${stats.completedEntries ?? 0} of ${stats.totalRequiredEntries} entries completed`,
       icon: TrendingUp,
       accent: "yellow",
       hasProgress: true,
@@ -97,9 +90,9 @@ export default function AdviserStatsCards({ stats, loading = false, error = null
                 )}
               </div>
 
-              <div className="mt-4 pt-3 border-t border-surface-border/70 flex flex-col gap-1.5">
-                {card.hasProgress && !loading && (
-                  <div className="w-full bg-surface-border/60 h-2 rounded-full overflow-hidden mb-1">
+              {card.hasProgress && !loading && (
+                <div className="mt-4 pt-3 border-t border-surface-border/70">
+                  <div className="w-full bg-surface-border/60 h-2 rounded-full overflow-hidden">
                     <div
                       className="bg-brand-yellow h-full rounded-full transition-all duration-700 ease-out"
                       style={{
@@ -111,11 +104,8 @@ export default function AdviserStatsCards({ stats, loading = false, error = null
                       aria-valuemax={100}
                     />
                   </div>
-                )}
-                <p className="text-xs text-brand-black/55 leading-relaxed">
-                  {card.subtext}
-                </p>
-              </div>
+                </div>
+              )}
             </div>
           );
         })}

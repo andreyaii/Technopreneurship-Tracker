@@ -17,6 +17,7 @@ export default function ProjectCard({ project }) {
   const groupCode =
     typeof project?.groupCode === "string" ? project.groupCode.trim() : "";
   const [fetchedMemberCount, setFetchedMemberCount] = useState(null);
+  const [memberCountError, setMemberCountError] = useState(false);
   const hasMemberCount = Number(project?.memberCount) > 0;
   const memberCount = hasMemberCount
     ? Number(project.memberCount)
@@ -27,9 +28,13 @@ export default function ProjectCard({ project }) {
     if (!groupCode || hasMemberCount) return undefined;
 
     let isCurrent = true;
-    getProjectMemberCount(groupCode).then((count) => {
-      if (isCurrent) setFetchedMemberCount(count);
-    });
+    getProjectMemberCount(groupCode)
+      .then((count) => {
+        if (isCurrent) setFetchedMemberCount(count);
+      })
+      .catch(() => {
+        if (isCurrent) setMemberCountError(true);
+      });
 
     return () => {
       isCurrent = false;
@@ -56,6 +61,11 @@ export default function ProjectCard({ project }) {
             <ArrowUpRight className="w-4 h-4 shrink-0 text-brand-black/40" />
           )}
         </h3>
+        {isAdviser && (
+          <p className="mt-1 text-xs font-medium text-brand-black/50">
+            Group Code: <span className="text-brand-black">{groupCode}</span>
+          </p>
+        )}
         <p className="mt-1 text-sm text-brand-black/60 line-clamp-3">
           {description}
         </p>
@@ -63,7 +73,9 @@ export default function ProjectCard({ project }) {
 
       <p className="inline-flex items-center gap-1.5 text-xs text-brand-black/60">
         <Users className="w-3.5 h-3.5" />
-        {memberCount === null
+        {memberCountError
+          ? "Member count unavailable"
+          : memberCount === null
           ? "Loading members..."
           : `${memberCount} ${memberCount === 1 ? "member" : "members"}`}
       </p>

@@ -30,6 +30,7 @@ export default function AdviserDashboard() {
 
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  const [projectsError, setProjectsError] = useState("");
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState(null);
@@ -41,6 +42,7 @@ export default function AdviserDashboard() {
     setLoadingProjects(true);
     setLoadingStats(true);
     setStatsError(null);
+    setProjectsError("");
 
     let loadedProjects = [];
 
@@ -51,6 +53,7 @@ export default function AdviserDashboard() {
     } catch (err) {
       console.error("Failed to load projects:", err);
       setProjects([]);
+      setProjectsError(err?.message || "Failed to load groups.");
     } finally {
       setLoadingProjects(false);
     }
@@ -162,6 +165,18 @@ export default function AdviserDashboard() {
         {loadingProjects ? (
           <div className="flex items-center gap-2.5 text-sm text-brand-black/60 py-4">
             <LoadingSpinner size="sm" text="Loading groups..." inline={false} />
+          </div>
+        ) : projectsError ? (
+          <div className="flex flex-col items-start gap-3 py-4">
+            <p className="text-sm text-rose-600">{projectsError}</p>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={loadingStats || isRefreshing}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-surface-muted hover:bg-surface-border/50 transition-colors disabled:opacity-50"
+            >
+              Retry
+            </button>
           </div>
         ) : (
           <div className="flex flex-col gap-4">

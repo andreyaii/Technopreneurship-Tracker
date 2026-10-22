@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   MessageSquareQuote,
   MessageSquare,
@@ -155,47 +155,77 @@ export default function StudentCommentsSection({ groupCode, studentNo, className
   const [errorGroup, setErrorGroup] = useState("");
   const [errorIndividual, setErrorIndividual] = useState("");
   const [errorRatings, setErrorRatings] = useState("");
+  const groupRequest = useRef(0);
+  const individualRequest = useRef(0);
+  const ratingsRequest = useRef(0);
 
   const loadGroupComments = useCallback(async () => {
-    if (!groupCode) return;
+    if (!groupCode) {
+      setGroupComments([]);
+      setLoadingGroup(false);
+      return;
+    }
+    const requestId = ++groupRequest.current;
     setLoadingGroup(true);
     setErrorGroup("");
     try {
       const data = await getGroupComments(groupCode);
       // Newest first
-      setGroupComments([...data].reverse());
+      if (requestId === groupRequest.current) {
+        setGroupComments([...data].reverse());
+      }
     } catch (err) {
-      setErrorGroup(err?.message || "Failed to load group comments.");
+      if (requestId === groupRequest.current) {
+        setErrorGroup(err?.message || "Failed to load group comments.");
+      }
     } finally {
-      setLoadingGroup(false);
+      if (requestId === groupRequest.current) setLoadingGroup(false);
     }
   }, [groupCode]);
 
   const loadIndividualComments = useCallback(async () => {
-    if (!studentNo) return;
+    if (!studentNo) {
+      setIndividualComments([]);
+      setLoadingIndividual(false);
+      return;
+    }
+    const requestId = ++individualRequest.current;
     setLoadingIndividual(true);
     setErrorIndividual("");
     try {
       const data = await getIndividualComments(studentNo);
-      setIndividualComments([...data].reverse());
+      if (requestId === individualRequest.current) {
+        setIndividualComments([...data].reverse());
+      }
     } catch (err) {
-      setErrorIndividual(err?.message || "Failed to load individual comments.");
+      if (requestId === individualRequest.current) {
+        setErrorIndividual(err?.message || "Failed to load individual comments.");
+      }
     } finally {
-      setLoadingIndividual(false);
+      if (requestId === individualRequest.current) {
+        setLoadingIndividual(false);
+      }
     }
   }, [studentNo]);
 
   const loadRatings = useCallback(async () => {
-    if (!groupCode || !studentNo) return;
+    if (!groupCode || !studentNo) {
+      setRatings({ groupRating: null, individualRating: null });
+      setLoadingRatings(false);
+      return;
+    }
+    const requestId = ++ratingsRequest.current;
     setLoadingRatings(true);
     setErrorRatings("");
     try {
       const data = await getRatings(groupCode, studentNo);
-      setRatings(data);
+      if (requestId === ratingsRequest.current) setRatings(data);
     } catch (err) {
-      setErrorRatings(err?.message || "Failed to load ratings.");
+      if (requestId === ratingsRequest.current) {
+        setErrorRatings(err?.message || "Failed to load ratings.");
+      }
     } finally {
-      setLoadingRatings(false);
+      if (requestId === ratingsRequest.current) setLoadingRatings(false);
     }
   }, [groupCode, studentNo]);
 
@@ -203,6 +233,11 @@ export default function StudentCommentsSection({ groupCode, studentNo, className
     loadGroupComments();
     loadIndividualComments();
     loadRatings();
+    return () => {
+      groupRequest.current += 1;
+      individualRequest.current += 1;
+      ratingsRequest.current += 1;
+    };
   }, [loadGroupComments, loadIndividualComments, loadRatings]);
 
   return (

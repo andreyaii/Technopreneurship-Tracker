@@ -149,29 +149,23 @@ export async function getStudentGroupCode(studentNo) {
 }
 
 export async function getGroupDeliverables(groupCodeInput) {
-  try {
-    const groupCode =
-      typeof groupCodeInput === "object"
-        ? groupCodeInput?.groupCode
-        : groupCodeInput;
+  const groupCode =
+    typeof groupCodeInput === "object"
+      ? groupCodeInput?.groupCode
+      : groupCodeInput;
 
-    if (!groupCode) return [];
+  if (!groupCode) return [];
 
-    const data = await postAction({
-      action: "getGroupDeliverables",
-      groupCode,
-    });
+  const data = await postAction({
+    action: "getGroupDeliverables",
+    groupCode,
+  });
 
-    if (!data.success || !Array.isArray(data.data)) {
-      console.error("getGroupDeliverables failed:", data?.message);
-      return [];
-    }
-
-    return data.data;
-  } catch (err) {
-    console.error("getGroupDeliverables error:", err);
-    return [];
+  if (!data.success || !Array.isArray(data.data)) {
+    throw new Error(data?.message || "Failed to load group deliverables.");
   }
+
+  return data.data;
 }
 
 export async function getGroupSubmissionProgress(studentOrGroupCode) {
@@ -230,16 +224,11 @@ export async function getStudentOverallProgress(studentNo) {
  * Shape: [{ studentNo, name, memberNo }]
  */
 export async function getGroupMembers(groupCode) {
-  try {
-    const data = await postAction({ action: "getGroupMembers", groupCode });
-    if (data.success && Array.isArray(data.data)) {
-      return data.data;
-    }
-    return [];
-  } catch (err) {
-    console.error("getGroupMembers error:", err);
-    return [];
+  const data = await postAction({ action: "getGroupMembers", groupCode });
+  if (!data.success || !Array.isArray(data.data)) {
+    throw new Error(data?.message || "Failed to load group members.");
   }
+  return data.data;
 }
 
 // ---------------------------------------------------------------------------
@@ -247,24 +236,19 @@ export async function getGroupMembers(groupCode) {
 // ---------------------------------------------------------------------------
 
 export async function getProjectMembers(groupCode) {
-  try {
-    const data = await postAction({
-      action: "getGroupMembers",
-      groupCode,
-    });
+  const data = await postAction({
+    action: "getGroupMembers",
+    groupCode,
+  });
 
-    if (!data.success || !Array.isArray(data.data)) {
-      return [];
-    }
-
-    return data.data.map((member) => ({
-      studentNo: member.studentNo,
-      name: member.name,
-    }));
-  } catch (err) {
-    console.error("getProjectMembers error:", err);
-    return [];
+  if (!data.success || !Array.isArray(data.data)) {
+    throw new Error(data?.message || "Failed to load project members.");
   }
+
+  return data.data.map((member) => ({
+    studentNo: member.studentNo,
+    name: member.name,
+  }));
 }
 
 export async function getProjectMemberCount(groupCode) {
@@ -273,22 +257,16 @@ export async function getProjectMemberCount(groupCode) {
 }
 
 export async function getProjectOverallProgress(groupCode) {
-  try {
-    const data = await postAction({
-      action: "getGroupProgress",
-      groupCode,
-    });
+  const data = await postAction({
+    action: "getGroupProgress",
+    groupCode,
+  });
 
-    if (!data.success) {
-      console.error("getGroupProgress failed:", data.message);
-      return 0;
-    }
-
-    return Number(data.progress || 0);
-  } catch (err) {
-    console.error("getProjectOverallProgress error:", err);
-    return 0;
+  if (!data.success) {
+    throw new Error(data.message || "Failed to load group progress.");
   }
+
+  return Number(data.progress || 0);
 }
 
 export async function getProjectRequirementsOverview(groupCode) {
@@ -322,24 +300,19 @@ export async function getProjectRequirementsOverview(groupCode) {
 }
 
 export async function getProjectByGroupCode(groupCode) {
-  try {
-    const data = await postAction({
-      action: "getGroups",
-    });
+  const data = await postAction({
+    action: "getGroups",
+  });
 
-    if (!data.success || !Array.isArray(data.data)) {
-      return undefined;
-    }
-
-    const project = data.data.find(
-      (item) => item.groupCode === groupCode
-    );
-
-    return project || undefined;
-  } catch (err) {
-    console.error("getProjectByGroupCode error:", err);
-    return undefined;
+  if (!data.success || !Array.isArray(data.data)) {
+    throw new Error(data.message || "Failed to load projects.");
   }
+
+  const project = data.data.find(
+    (item) => item.groupCode === groupCode
+  );
+
+  return project || undefined;
 }
 
 /**
@@ -366,8 +339,6 @@ export async function getAllProjects() {
     const data = await postAction({
       action: "getGroups",
     });
-
-    console.log("getGroups response:", data);
 
     if (!data.success) {
       throw new Error(data.message || "Failed to load groups.");
@@ -407,16 +378,11 @@ export async function getAllProjects() {
  * Returns: [{ group, adviser, comment, timestamp }]
  */
 export async function getGroupComments(groupCode) {
-  try {
-    const data = await postAction({ action: "getGroupComments", groupCode });
-    if (data.success && Array.isArray(data.data)) {
-      return data.data;
-    }
-    return [];
-  } catch (err) {
-    console.error("getGroupComments error:", err);
-    return [];
+  const data = await postAction({ action: "getGroupComments", groupCode });
+  if (!data.success || !Array.isArray(data.data)) {
+    throw new Error(data.message || "Failed to load group comments.");
   }
+  return data.data;
 }
 
 /**
@@ -453,16 +419,11 @@ export async function addGroupComment(groupCode, adviserName, comment, adviserId
  * @param {string} studentNo
  */
 export async function getIndividualComments(studentNo) {
-  try {
-    const data = await postAction({ action: "getIndividualComments", studentNo });
-    if (data.success && Array.isArray(data.data)) {
-      return data.data;
-    }
-    return [];
-  } catch (err) {
-    console.error("getIndividualComments error:", err);
-    return [];
+  const data = await postAction({ action: "getIndividualComments", studentNo });
+  if (!data.success || !Array.isArray(data.data)) {
+    throw new Error(data.message || "Failed to load individual comments.");
   }
+  return data.data;
 }
 
 /**
@@ -502,20 +463,15 @@ export async function addIndividualComment(student, adviserName, comment, advise
  *            individualRating: { rating, adviser, timestamp } | null }
  */
 export async function getRatings(groupCode, studentNo) {
-  try {
-    const data = await postAction({
-      action: "getRatings",
-      groupCode,
-      studentNo: studentNo || "",
-    });
-    if (data.success) {
-      return data.data || { groupRating: null, individualRating: null };
-    }
-    return { groupRating: null, individualRating: null };
-  } catch (err) {
-    console.error("getRatings error:", err);
-    return { groupRating: null, individualRating: null };
+  const data = await postAction({
+    action: "getRatings",
+    groupCode,
+    studentNo: studentNo || "",
+  });
+  if (!data.success) {
+    throw new Error(data.message || "Failed to load ratings.");
   }
+  return data.data || { groupRating: null, individualRating: null };
 }
 
 /**

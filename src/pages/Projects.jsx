@@ -11,11 +11,14 @@ export default function Projects() {
   const [projects, setProjects] = useState([]);
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let isCurrent = true;
     async function loadProjects() {
       setIsLoading(true);
+      setLoadError("");
       try {
         const data = await getAllProjects();
         if (isCurrent) {
@@ -25,6 +28,7 @@ export default function Projects() {
         console.error("Failed to load projects:", err);
         if (isCurrent) {
           setProjects([]);
+          setLoadError(err?.message || "Failed to load projects.");
         }
       } finally {
         if (isCurrent) {
@@ -36,7 +40,7 @@ export default function Projects() {
     return () => {
       isCurrent = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   const filtered = useMemo(() => {
     const validProjects = projects.filter(
@@ -78,6 +82,17 @@ export default function Projects() {
       {isLoading ? (
         <div className="flex items-center justify-center py-24 text-brand-black/60">
           <LoadingSpinner size="md" text="Loading projects..." />
+        </div>
+      ) : loadError ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+          <p className="text-sm text-rose-600">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => setReloadKey((key) => key + 1)}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-surface-border hover:bg-surface-muted transition-colors"
+          >
+            Retry
+          </button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center gap-3">

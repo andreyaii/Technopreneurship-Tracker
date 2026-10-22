@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   MessageSquare,
   Star,
@@ -102,7 +102,7 @@ function StarRatingInput({ value, onChange, disabled }) {
   );
 }
 
-function CommentHistoryList({ comments, loading, error, emptyMsg }) {
+function CommentHistoryList({ comments, loading, error, emptyMsg, onRetry }) {
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-brand-black/40 py-2">
@@ -111,7 +111,18 @@ function CommentHistoryList({ comments, loading, error, emptyMsg }) {
     );
   }
   if (error) {
-    return <p className="text-sm text-rose-600">{error}</p>;
+    return (
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-rose-600">{error}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-surface-muted hover:bg-surface-border/50 transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
   if (!comments.length) {
     return <p className="text-sm text-brand-black/40 py-2">{emptyMsg}</p>;
@@ -151,13 +162,18 @@ function CommentHistoryList({ comments, loading, error, emptyMsg }) {
  * Reads adviser identity from AuthContext (never manually entered).
  * Handles both group and individual comment/rating submission.
  */
-export default function AdviserCommentForm({ groupCode, groupLabel }) {
+export default function AdviserCommentForm({
+  groupCode,
+  groupLabel,
+  initialMembers,
+}) {
   const { student: adviser } = useAuth();
   const adviserName = adviser?.name || "Adviser";
 
   // Members of the selected group
   const [members, setMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [membersError, setMembersError] = useState("");
 
   // Comment form state
   const [commentTarget, setCommentTarget] = useState("Group");
@@ -180,58 +196,96 @@ export default function AdviserCommentForm({ groupCode, groupLabel }) {
   const [individualComments, setIndividualComments] = useState([]);
   const [loadingGroupHistory, setLoadingGroupHistory] = useState(false);
   const [loadingIndHistory, setLoadingIndHistory] = useState(false);
-  const [historyError, setHistoryError] = useState("");
+  const [groupHistoryError, setGroupHistoryError] = useState("");
+  const [individualHistoryError, setIndividualHistoryError] = useState("");
+  const membersRequest = useRef(0);
+  const groupHistoryRequest = useRef(0);
+  const individualHistoryRequest = useRef(0);
 
   // Load group members whenever groupCode changes
   const loadMembers = useCallback(async () => {
     if (!groupCode) return;
-    setLoadingMembers(true);
+    const requestId = ++membersRequest.current;
     setSelectedMember(null);
     setRatingMember(null);
+    setMembersError("");
+    if (Array.isArray(initialMembers)) {
+      setMembers(initialMembers);
+      setLoadingMembers(false);
+      return;
+    }
+
+    setLoadingMembers(true);
     try {
       const data = await getGroupMembers(groupCode);
-      setMembers(data);
-    } catch {
-      setMembers([]);
+      if (requestId === membersRequest.current) setMembers(data);
+    } catch (err) {
+      if (requestId === membersRequest.current) {
+        setMembers([]);
+        setMembersError(err?.message || "Failed to load group members.");
+      }
     } finally {
-      setLoadingMembers(false);
+      if (requestId === membersRequest.current) setLoadingMembers(false);
     }
-  }, [groupCode]);
+  }, [groupCode, initialMembers]);
 
   // Load comment history
   const loadGroupHistory = useCallback(async () => {
     if (!groupCode) return;
+    const requestId = ++groupHistoryRequest.current;
     setLoadingGroupHistory(true);
+    setGroupHistoryError("");
     try {
       const data = await getGroupComments(groupCode);
-      setGroupComments(data);
+      if (requestId === groupHistoryRequest.current) setGroupComments(data);
     } catch (err) {
-      setHistoryError(err?.message || "Failed to load comments.");
+      if (requestId === groupHistoryRequest.current) {
+        setGroupHistoryError(err?.message || "Failed to load group comments.");
+      }
     } finally {
-      setLoadingGroupHistory(false);
+      if (requestId === groupHistoryRequest.current) {
+        setLoadingGroupHistory(false);
+      }
     }
   }, [groupCode]);
 
   const loadIndividualHistory = useCallback(async () => {
     if (!selectedMember?.studentNo) return;
+    const requestId = ++individualHistoryRequest.current;
     setLoadingIndHistory(true);
+    setIndividualHistoryError("");
     try {
       const data = await getIndividualComments(selectedMember.studentNo);
-      setIndividualComments(data);
+      if (requestId === individualHistoryRequest.current) {
+        setIndividualComments(data);
+      }
     } catch (err) {
-      setHistoryError(err?.message || "Failed to load comments.");
+      if (requestId === individualHistoryRequest.current) {
+        setIndividualHistoryError(
+          err?.message || "Failed to load individual comments."
+        );
+      }
     } finally {
-      setLoadingIndHistory(false);
+      if (requestId === individualHistoryRequest.current) {
+        setLoadingIndHistory(false);
+      }
     }
   }, [selectedMember]);
 
   useEffect(() => {
     loadMembers();
     loadGroupHistory();
+    return () => {
+      membersRequest.current += 1;
+      groupHistoryRequest.current += 1;
+    };
   }, [loadMembers, loadGroupHistory]);
 
   useEffect(() => {
     if (selectedMember) loadIndividualHistory();
+    return () => {
+      individualHistoryRequest.current += 1;
+    };
   }, [selectedMember, loadIndividualHistory]);
 
   // Reset form when target changes
@@ -375,6 +429,17 @@ export default function AdviserCommentForm({ groupCode, groupLabel }) {
                 {loadingMembers ? (
                   <div className="flex items-center gap-2 text-sm text-brand-black/40 px-3 py-2.5">
                     <LoadingSpinner size="sm" text="Loading members..." />
+                  </div>
+                ) : membersError ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm text-rose-600">{membersError}</p>
+                    <button
+                      type="button"
+                      onClick={loadMembers}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-surface-border hover:bg-surface-muted transition-colors"
+                    >
+                      Retry
+                    </button>
                   </div>
                 ) : (
                   <>
@@ -614,7 +679,8 @@ export default function AdviserCommentForm({ groupCode, groupLabel }) {
           <CommentHistoryList
             comments={groupComments}
             loading={loadingGroupHistory}
-            error={historyError}
+            error={groupHistoryError}
+            onRetry={loadGroupHistory}
             emptyMsg="No group comments have been posted yet."
           />
         </div>
@@ -630,7 +696,8 @@ export default function AdviserCommentForm({ groupCode, groupLabel }) {
             <CommentHistoryList
               comments={individualComments}
               loading={loadingIndHistory}
-              error={historyError}
+              error={individualHistoryError}
+              onRetry={loadIndividualHistory}
               emptyMsg={`No individual comments for ${selectedMember.name} yet.`}
             />
           </div>

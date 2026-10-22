@@ -19,14 +19,21 @@ export default function ProjectDetails({
   members,
   deliverables,
   isAdviser,
+  initialMembers,
 }) {
   const { student } = useAuth();
-  const { title, description, progress } = project;
+  const { title, description, progress, groupCode } = project;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="rounded-2xl border border-surface-border bg-white p-6 sm:p-8 shadow-card">
         <h1 className="text-2xl sm:text-3xl font-display font-bold">{title}</h1>
+        {isAdviser && typeof groupCode === "string" && groupCode.trim() && (
+          <p className="mt-2 text-sm text-brand-black/60">
+            <span className="font-semibold text-brand-black/45">Group Code:</span>{" "}
+            <span className="font-medium text-brand-black">{groupCode}</span>
+          </p>
+        )}
         <p className="mt-2 text-sm sm:text-base text-brand-black/60 max-w-2xl">
           {description}
         </p>
@@ -88,6 +95,7 @@ export default function ProjectDetails({
         <AdviserCommentForm
           groupCode={project.groupCode}
           groupLabel={title}
+          initialMembers={initialMembers}
         />
       ) : (
         <StudentCommentsSection

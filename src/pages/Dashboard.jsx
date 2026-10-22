@@ -7,6 +7,7 @@ import {
   GraduationCap,
   TrendingUp,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
@@ -48,6 +49,8 @@ export default function Dashboard() {
   const [deliverables, setDeliverables] = useState([]);
   const [overallProgress, setOverallProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [dataErrors, setDataErrors] = useState([]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!student?.groupCode) return;
@@ -56,43 +59,86 @@ export default function Dashboard() {
 
     async function loadDashboardData() {
       setIsLoading(true);
-      const [projectData, members, groupDeliverables, progress] = await Promise.all([
-        getProjectByGroupCode(student.groupCode),
-        getGroupMembers(student.groupCode),
-        getGroupDeliverables(student.groupCode),
-        getGroupSubmissionProgress(student.groupCode),
-      ]);
+      setDataErrors([]);
+      const hasStudentDeliverables =
+        Array.isArray(student.deliverables) && student.deliverables.length > 0;
+      const needsGroupProgress =
+        !hasStudentDeliverables && typeof student.progress !== "number";
 
-      const userDeliverables =
-        student?.deliverables && student.deliverables.length > 0
+      try {
+        const [
+          projectResult,
+          membersResult,
+          deliverablesResult,
+          progressResult,
+        ] = await Promise.allSettled([
+            getProjectByGroupCode(student.groupCode),
+            getGroupMembers(student.groupCode),
+            hasStudentDeliverables
+              ? Promise.resolve(null)
+              : getGroupDeliverables(student.groupCode),
+            needsGroupProgress
+              ? getGroupSubmissionProgress(student.groupCode)
+              : Promise.resolve(null),
+          ]);
+
+        const errors = [];
+        const projectData =
+          projectResult.status === "fulfilled" ? projectResult.value : null;
+        const members =
+          membersResult.status === "fulfilled" ? membersResult.value : [];
+        const groupDeliverables =
+          deliverablesResult.status === "fulfilled"
+            ? deliverablesResult.value
+            : [];
+        const groupProgress =
+          progressResult.status === "fulfilled"
+            ? progressResult.value
+            : null;
+
+        if (projectResult.status === "rejected") errors.push("project details");
+        if (membersResult.status === "rejected") errors.push("group members");
+        if (!hasStudentDeliverables && deliverablesResult.status === "rejected") {
+          errors.push("deliverables");
+        }
+        if (needsGroupProgress && progressResult.status === "rejected") {
+          errors.push("progress");
+        }
+
+        const userDeliverables = hasStudentDeliverables
           ? student.deliverables
           : groupDeliverables;
 
-      const userProgress =
-        student?.deliverables?.length > 0
+        const userProgress = hasStudentDeliverables
           ? Math.round(
               (student.deliverables.filter(
                 (item) => item.status === "Submitted" || item.isSubmitted === true
               ).length / student.deliverables.length) * 100
             )
-          : typeof student?.progress === "number"
+          : typeof student.progress === "number"
             ? student.progress
-            : progress;
+            : groupProgress ?? 0;
 
-      if (!isCurrent) return;
-      setProject(projectData);
-      setGroupMembers(members);
-      setShowGroupMembers(false);
-      setDeliverables(userDeliverables);
-      setOverallProgress(userProgress);
-      setIsLoading(false);
+        if (!isCurrent) return;
+        setProject(projectData);
+        setGroupMembers(members);
+        setShowGroupMembers(false);
+        setDeliverables(userDeliverables);
+        setOverallProgress(userProgress);
+        setDataErrors(errors);
+      } catch (err) {
+        if (!isCurrent) return;
+        setDataErrors([err?.message || "Failed to load dashboard data"]);
+      } finally {
+        if (isCurrent) setIsLoading(false);
+      }
     }
 
     loadDashboardData();
     return () => {
       isCurrent = false;
     };
-  }, [student]);
+  }, [student, reloadKey]);
 
   if (!student) return null;
 
@@ -109,12 +155,39 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {isLoading ? (
+      {!student.groupCode ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center">
+            <Users2 className="w-5 h-5 text-brand-black/40" />
+          </div>
+          <p className="text-sm text-brand-black/50">
+            No group is assigned to your account yet.
+          </p>
+        </div>
+      ) : isLoading ? (
         <div className="flex items-center justify-center py-24 text-brand-black/60">
           <LoadingSpinner size="md" text="Loading your dashboard..." />
         </div>
       ) : (
         <>
+          {dataErrors.length > 0 && (
+            <div
+              role="alert"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            >
+              <span>
+                Some dashboard data could not be loaded: {dataErrors.join(", ")}.
+              </span>
+              <button
+                type="button"
+                onClick={() => setReloadKey((key) => key + 1)}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-amber-200 hover:bg-amber-100 transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Retry
+              </button>
+            </div>
+          )}
           <section className="rounded-2xl border border-surface-border bg-white p-6 sm:p-7 shadow-card">
             <h2 className="text-xs font-bold uppercase tracking-wider text-brand-black/45 mb-5">
               Student Information
