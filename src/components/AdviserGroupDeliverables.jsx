@@ -6,12 +6,19 @@ import {
     Presentation,
     CheckCircle2,
     Circle,
+    Clock,
     Calendar,
     Layers,
     Sparkles,
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
+import {
+    filterGroupDeliverables,
+    getGroupDeliverableStatus,
+    getGroupDeliverableStatusCounts,
+    GROUP_DELIVERABLE_STATUS,
+} from "../utils/groupDeliverableStatus";
 
 export const DELIVERABLES_PER_PAGE = 6;
 
@@ -94,16 +101,8 @@ function formatDueDate(dueDate) {
     return "Open";
 }
 
-function isSubmitted(item) {
-    return item.status === "Submitted" || item.isSubmitted === true;
-}
-
-function isUnavailable(item) {
-    return !isSubmitted(item);
-}
-
-function StatusBadge({ submitted }) {
-    if (!submitted) {
+function StatusBadge({ status }) {
+    if (status === GROUP_DELIVERABLE_STATUS.NOT_AVAILABLE) {
         return (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap bg-rose-50 text-rose-700 border border-rose-200">
                 <Circle
@@ -115,7 +114,19 @@ function StatusBadge({ submitted }) {
         );
     }
 
-    if (submitted) {
+    if (status === GROUP_DELIVERABLE_STATUS.IN_PROGRESS) {
+        return (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap bg-amber-50 text-amber-800 border border-amber-200">
+                <Clock
+                    className="w-3.5 h-3.5 shrink-0"
+                    strokeWidth={2.5}
+                />
+                In Progress
+            </span>
+        );
+    }
+
+    if (status === GROUP_DELIVERABLE_STATUS.SUBMITTED) {
         return (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                 <CheckCircle2
@@ -138,24 +149,12 @@ export default function AdviserGroupDeliverables({
     const [activeFilter, setActiveFilter] = useState("all");
     const [page, setPage] = useState(0);
 
-    const submittedCount = deliverables.filter(isSubmitted).length;
-    const unavailableCount = deliverables.filter(isUnavailable).length;
+    const statusCounts = getGroupDeliverableStatusCounts(deliverables);
+    const submittedCount = statusCounts.submitted;
     const completedCount = submittedCount;
 
     const filteredDeliverables = useMemo(() => {
-        return deliverables.filter((item) => {
-            const submitted = isSubmitted(item);
-
-            if (activeFilter === "submitted") {
-                return submitted;
-            }
-
-            if (activeFilter === "notAvailable") {
-                return isUnavailable(item);
-            }
-
-            return true;
-        });
+        return filterGroupDeliverables(deliverables, activeFilter);
     }, [deliverables, activeFilter]);
 
     const totalPages = Math.max(
@@ -180,9 +179,7 @@ export default function AdviserGroupDeliverables({
     );
 
     const submittedShare = deliverables.length > 0
-        ? Math.round(
-            (submittedCount / (submittedCount + unavailableCount)) * 100
-        )
+        ? Math.round((submittedCount / deliverables.length) * 100)
         : 0;
 
     return (
@@ -241,13 +238,24 @@ export default function AdviserGroupDeliverables({
 
                     <button
                         type="button"
+                        onClick={() => setActiveFilter("inProgress")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeFilter === "inProgress"
+                                ? "bg-amber-700 text-white shadow-sm"
+                                : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200/60"
+                            }`}
+                    >
+                        In Progress ({statusCounts.inProgress})
+                    </button>
+
+                    <button
+                        type="button"
                         onClick={() => setActiveFilter("notAvailable")}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeFilter === "notAvailable"
                                 ? "bg-rose-700 text-white shadow-sm"
                                 : "bg-rose-50 text-rose-700 hover:bg-rose-100/80 border border-rose-200/60"
                             }`}
                     >
-                        Not Available ({unavailableCount})
+                        Not Available ({statusCounts.notAvailable})
                     </button>
                 </div>
             </div>
@@ -293,13 +301,14 @@ export default function AdviserGroupDeliverables({
                                 const IconComponent =
                                     getDeliverableIcon(item.type);
 
-                                const submitted = isSubmitted(item);
-
+                                const status = getGroupDeliverableStatus(item);
+                                const submitted =
+                                    status === GROUP_DELIVERABLE_STATUS.SUBMITTED;
                                 const submittedMembers =
-                                    item.submittedCount ?? 0;
+                                    Number(item.submittedCount) || 0;
 
                                 const totalMembers =
-                                    item.totalMembers ?? 0;
+                                    Number(item.totalMembers) || 0;
 
                                 return (
                                     <tr
@@ -351,13 +360,13 @@ export default function AdviserGroupDeliverables({
                                         <td className="py-4 px-4 align-middle">
                                             <div className="flex flex-col items-start gap-1.5">
                                                 <StatusBadge
-                                                    submitted={submitted}
+                                                    status={status}
                                                 />
 
-                                                {item.status !== "Not Available" && (
+                                                {totalMembers > 0 && (
                                                     <span className="text-xs font-medium text-brand-black/55">
                                                         {submittedMembers}/{totalMembers}{" "}
-                                                        available members submitted
+                                                        members submitted
                                                     </span>
                                                 )}
                                             </div>

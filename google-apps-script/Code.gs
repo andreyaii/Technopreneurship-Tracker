@@ -24,6 +24,8 @@ const SHEET_NAMES = {
 
 // Row 539 in TEC_CSIT sheet contains OPEN/CLOSED availability flags for deliverables
 const AVAILABILITY_ROW_INDEX = 539;
+const STUDENT_METADATA_COLUMN_COUNT = 9;
+const ADVISER_STATS_COLUMN_COUNT = 20;
 
 const STUDENT_METADATA_HEADERS = new Set([
   "NO",
@@ -164,6 +166,26 @@ function getOrCreateSheet(sheetName, defaultHeaders) {
     }
   }
   return sheet;
+}
+
+function getStudentMetadataData(sheet) {
+  const lastRow = sheet.getLastRow();
+  return lastRow > 0
+    ? sheet.getRange(1, 1, lastRow, STUDENT_METADATA_COLUMN_COUNT).getValues()
+    : [[]];
+}
+
+function getAdviserSheetData() {
+  const sheet = getOrCreateSheet(SHEET_NAMES.ADVISERS, ["AdviserID", "Name", "PIN", "Role"]);
+  const data = sheet.getDataRange().getValues();
+
+  if (data.length <= 1) {
+    const guestAccount = ["guest", "Guest Adviser", "1234", "guest"];
+    sheet.appendRow(guestAccount);
+    data.push(guestAccount);
+  }
+
+  return data;
 }
 
 // ============================================================================
@@ -333,15 +355,7 @@ function handleLoginAdviser(body) {
     return { success: false, message: "Adviser ID and PIN are required." };
   }
 
-  const sheet = getOrCreateSheet(SHEET_NAMES.ADVISERS, ["AdviserID", "Name", "PIN", "Role"]);
-  const data = sheet.getDataRange().getValues();
-
-  // If table only has headers, initialize default guest account
-  if (data.length <= 1) {
-    sheet.appendRow(["guest", "Guest Adviser", "1234", "guest"]);
-  }
-
-  const refreshedData = sheet.getDataRange().getValues();
+  const refreshedData = getAdviserSheetData();
   const headers = refreshedData[0].map(h => String(h).trim().toUpperCase());
   const colIndex = {
     adviserId: headers.indexOf("ADVISERID"),
@@ -387,13 +401,7 @@ function validateAdviserExists(identifier) {
     return { valid: false, message: "Adviser identifier is required." };
   }
 
-  const sheet = getOrCreateSheet(SHEET_NAMES.ADVISERS, ["AdviserID", "Name", "PIN", "Role"]);
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) {
-    sheet.appendRow(["guest", "Guest Adviser", "1234", "guest"]);
-  }
-
-  const refreshedData = sheet.getDataRange().getValues();
+  const refreshedData = getAdviserSheetData();
   const headers = refreshedData[0].map(h => String(h).trim().toUpperCase());
   const colAdviserId = headers.indexOf("ADVISERID");
   const colName = headers.indexOf("NAME");
@@ -436,7 +444,7 @@ function handleGetStudent(body) {
   const sheet = ss.getSheetByName(SHEET_NAMES.STUDENTS);
   if (!sheet) return { success: false, message: "Students sheet not found." };
 
-  const data = sheet.getDataRange().getValues();
+  const data = getStudentMetadataData(sheet);
   const headers = data[0].map(h => String(h).trim().toUpperCase());
   const colStudentNo = headers.indexOf("STUDENT NO.");
   const colPin = headers.indexOf("PIN");
@@ -483,12 +491,13 @@ function handleGetStudent(body) {
 function handleGetGroupMembers(body) {
   const groupCode = String(body.groupCode || "").trim();
   if (!groupCode) return { success: false, message: "groupCode is required." };
+  const normalizedGroupCode = groupCode.toLowerCase();
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAMES.STUDENTS);
   if (!sheet) return { success: true, data: [] };
 
-  const data = sheet.getDataRange().getValues();
+  const data = getStudentMetadataData(sheet);
   const headers = data[0].map(h => String(h).trim().toUpperCase());
   const colGroup = headers.indexOf("GROUP");
   const colStudentNo = headers.indexOf("STUDENT NO.");
@@ -499,7 +508,7 @@ function handleGetGroupMembers(body) {
   for (let r = 1; r < data.length; r++) {
     if (r === AVAILABILITY_ROW_INDEX - 1) continue;
     const row = data[r];
-    if (String(row[colGroup] || "").trim().toLowerCase() === groupCode.toLowerCase()) {
+    if (String(row[colGroup] || "").trim().toLowerCase() === normalizedGroupCode) {
       members.push({
         studentNo: String(row[colStudentNo] || "").trim(),
         name: String(row[colName] || "").trim(),
@@ -517,6 +526,7 @@ function handleGetGroupMembers(body) {
 
 function handleGetGroupProgress(payload) {
   const groupCode = String(payload.groupCode || "").trim();
+  const normalizedGroupCode = groupCode.toLowerCase();
 
   if (!groupCode) {
     return {
@@ -567,7 +577,7 @@ function handleGetGroupProgress(payload) {
 
     const rowGroup = String(row[colGroup] || "").trim();
 
-    if (rowGroup.toLowerCase() !== groupCode.toLowerCase()) {
+    if (rowGroup.toLowerCase() !== normalizedGroupCode) {
       continue;
     }
 
@@ -670,6 +680,7 @@ function handleGetGroups() {
 function handleGetGroupComments(body) {
   const groupCode = String(body.groupCode || "").trim();
   if (!groupCode) return { success: false, message: "groupCode is required." };
+  const normalizedGroupCode = groupCode.toLowerCase();
 
   const sheet = getOrCreateSheet(SHEET_NAMES.GROUP_COMMENTS, [
     "Group", "Adviser", "Comment", "Timestamp"
@@ -677,10 +688,10 @@ function handleGetGroupComments(body) {
   const data = sheet.getDataRange().getValues();
   const comments = [];
 
-  for (let r = 1; r < data.length; r++) {
+  for (let r = data.length - 1; r > 0; r--) {
     const row = data[r];
     const rowGroup = String(row[0] || "").trim();
-    if (rowGroup.toLowerCase() === groupCode.toLowerCase()) {
+    if (rowGroup.toLowerCase() === normalizedGroupCode) {
       comments.push({
         group: rowGroup,
         adviser: String(row[1] || "").trim(),
@@ -689,9 +700,6 @@ function handleGetGroupComments(body) {
       });
     }
   }
-
-  // Newest first
-  comments.reverse();
 
   return { success: true, data: comments };
 }
@@ -743,6 +751,7 @@ function handleAddGroupComment(body) {
 function handleGetIndividualComments(body) {
   const studentNo = String(body.studentNo || "").trim();
   if (!studentNo) return { success: false, message: "studentNo is required." };
+  const normalizedStudentNo = studentNo.toLowerCase();
 
   const sheet = getOrCreateSheet(SHEET_NAMES.INDIVIDUAL_COMMENTS, [
     "StudentNo.", "Group", "Student Name", "Adviser", "Comment", "Timestamp"
@@ -750,10 +759,10 @@ function handleGetIndividualComments(body) {
   const data = sheet.getDataRange().getValues();
   const comments = [];
 
-  for (let r = 1; r < data.length; r++) {
+  for (let r = data.length - 1; r > 0; r--) {
     const row = data[r];
     const rowStudentNo = String(row[0] || "").trim();
-    if (rowStudentNo.toLowerCase() === studentNo.toLowerCase()) {
+    if (rowStudentNo.toLowerCase() === normalizedStudentNo) {
       comments.push({
         studentNo: rowStudentNo,
         group: String(row[1] || "").trim(),
@@ -764,9 +773,6 @@ function handleGetIndividualComments(body) {
       });
     }
   }
-
-  // Newest first
-  comments.reverse();
 
   return { success: true, data: comments };
 }
@@ -821,6 +827,8 @@ function handleAddIndividualComment(body) {
 function handleGetRatings(body) {
   const groupCode = String(body.groupCode || "").trim();
   const studentNo = String(body.studentNo || "").trim();
+  const normalizedGroupCode = groupCode.toLowerCase();
+  const normalizedStudentNo = studentNo.toLowerCase();
 
   const sheet = getOrCreateSheet(SHEET_NAMES.RATINGS, [
     "TargetType", "Group", "StudentNo.", "Student Name", "Adviser", "Rating", "Timestamp"
@@ -830,22 +838,36 @@ function handleGetRatings(body) {
   let latestGroupRating = null;
   let latestIndividualRating = null;
 
-  for (let r = 1; r < data.length; r++) {
+  for (let r = data.length - 1; r > 0; r--) {
     const row = data[r];
     const targetType = String(row[0] || "").trim().toLowerCase();
-    const rowGroup = String(row[1] || "").trim();
-    const rowStudentNo = String(row[2] || "").trim();
-    const adviser = String(row[4] || "").trim();
-    const rating = Number(row[5]) || 0;
-    const timestamp = row[6] instanceof Date ? row[6].toISOString() : String(row[6] || "");
-
-    if (targetType === "group" && groupCode && rowGroup.toLowerCase() === groupCode.toLowerCase()) {
-      latestGroupRating = { rating, adviser, timestamp };
+    if (
+      latestGroupRating === null &&
+      groupCode &&
+      targetType === "group" &&
+      String(row[1] || "").trim().toLowerCase() === normalizedGroupCode
+    ) {
+      latestGroupRating = {
+        rating: Number(row[5]) || 0,
+        adviser: String(row[4] || "").trim(),
+        timestamp: row[6] instanceof Date ? row[6].toISOString() : String(row[6] || ""),
+      };
     }
 
-    if (targetType === "individual" && studentNo && rowStudentNo.toLowerCase() === studentNo.toLowerCase()) {
-      latestIndividualRating = { rating, adviser, timestamp };
+    if (
+      latestIndividualRating === null &&
+      studentNo &&
+      targetType === "individual" &&
+      String(row[2] || "").trim().toLowerCase() === normalizedStudentNo
+    ) {
+      latestIndividualRating = {
+        rating: Number(row[5]) || 0,
+        adviser: String(row[4] || "").trim(),
+        timestamp: row[6] instanceof Date ? row[6].toISOString() : String(row[6] || ""),
+      };
     }
+
+    if (latestGroupRating !== null && latestIndividualRating !== null) break;
   }
 
   return {
@@ -892,6 +914,7 @@ function handleGetGroupDeliverables(payload) {
   const deliverableColumns = getDeliverableColumns(data[0]);
 
   const colGroup = headers.indexOf("GROUP");
+  const colStudentNo = headers.indexOf("STUDENT NO.");
 
   if (colGroup === -1) {
     return {
@@ -899,11 +922,24 @@ function handleGetGroupDeliverables(payload) {
       message: "GROUP column not found.",
     };
   }
+  if (colStudentNo === -1) {
+    return {
+      success: false,
+      message: "STUDENT NO. column not found.",
+    };
+  }
 
-  const groupRows = data.slice(1).filter((row) => {
+  const normalizedGroupCode = groupCode.toLowerCase();
+  const groupRows = [];
+  for (let r = 1; r < data.length; r++) {
+    if (r === AVAILABILITY_ROW_INDEX - 1) continue;
+    const row = data[r];
     const rowGroup = String(row[colGroup] || "").trim();
-    return rowGroup.toLowerCase() === groupCode.toLowerCase();
-  });
+    const studentNo = String(row[colStudentNo] || "").trim();
+    if (studentNo && rowGroup.toLowerCase() === normalizedGroupCode) {
+      groupRows.push(row);
+    }
+  }
 
   if (groupRows.length === 0) {
     return {
@@ -913,45 +949,37 @@ function handleGetGroupDeliverables(payload) {
   }
 
   const timeZone = ss.getSpreadsheetTimeZone();
+  const totalMembers = groupRows.length;
 
   const deliverables = deliverableColumns.map((deliverable) => {
     const colIndex = deliverable.index;
     let submittedCount = 0;
-    let unavailableCount = 0;
     let latestSubmittedDate = null;
 
     groupRows.forEach((row) => {
       const value = row[colIndex];
 
       if (isNotAvailableValue(value)) {
-        unavailableCount++;
         return;
       }
 
-      if (
-        value !== "" &&
-        value !== null &&
-        value !== undefined
-      ) {
-        submittedCount++;
+      submittedCount++;
 
-        if (value instanceof Date) {
-          if (
-            !latestSubmittedDate ||
-            value > latestSubmittedDate
-          ) {
-            latestSubmittedDate = value;
-          }
+      if (value instanceof Date) {
+        if (
+          !latestSubmittedDate ||
+          value > latestSubmittedDate
+        ) {
+          latestSubmittedDate = value;
         }
       }
     });
 
-    const totalMembers = groupRows.length;
-    const availableMembers = totalMembers - unavailableCount;
-
     const status = submittedCount === totalMembers
       ? "Submitted"
-      : "Not Available";
+      : submittedCount > 0
+        ? "In Progress"
+        : "Not Available";
 
     let formattedSubmittedDate = null;
 
@@ -971,7 +999,7 @@ function handleGetGroupDeliverables(payload) {
       status: status,
 
       submittedCount: submittedCount,
-      totalMembers: availableMembers,
+      totalMembers: totalMembers,
 
       submittedDate: formattedSubmittedDate,
 
@@ -1071,7 +1099,7 @@ function handleGetTotalStudents() {
     return { success: false, message: "Students sheet not found." };
   }
 
-  const data = sheet.getDataRange().getValues();
+  const data = getStudentMetadataData(sheet);
   const headers = (data[0] || []).map(function (h) {
     return String(h || "").trim().toUpperCase();
   });
@@ -1141,7 +1169,10 @@ function handleGetAdviserDashboardStats() {
   }
 
   // 2. Read students and deliverables
-  const sData = studentsSheet.getDataRange().getValues();
+  const studentLastRow = studentsSheet.getLastRow();
+  const sData = studentLastRow > 0
+    ? studentsSheet.getRange(1, 1, studentLastRow, ADVISER_STATS_COLUMN_COUNT).getValues()
+    : [[]];
   const sHeaders = (sData[0] || []).map(function (h) {
     return String(h || "").trim().toUpperCase();
   });
@@ -1151,13 +1182,8 @@ function handleGetAdviserDashboardStats() {
   const colGroup = sHeaders.indexOf("GROUP");
   const colStudentNo = sHeaders.indexOf("STUDENT NO.");
 
-  // Count only rows with a real student number (excludes blank rows & availability row)
+  // Count and aggregate each student row in one pass.
   let totalStudentCount = 0;
-  for (let r = 1; r < sData.length; r++) {
-    if (r === AVAILABILITY_ROW_INDEX - 1) continue;
-    const sNo = colStudentNo !== -1 ? String(sData[r][colStudentNo] || "").trim() : "";
-    if (sNo) totalStudentCount++;
-  }
 
   const activityList = [];
   const activityMap = {};
@@ -1183,31 +1209,31 @@ function handleGetAdviserDashboardStats() {
     const row = sData[r];
     const rowStudentNo = colStudentNo !== -1 ? String(row[colStudentNo] || "").trim() : "";
     if (!rowStudentNo) continue; // skip blank/metadata rows
+    totalStudentCount++;
+
     const rowGroup = colGroup !== -1 ? String(row[colGroup] || "").trim().toLowerCase() : "";
 
-    deliverableColumns.forEach(function (deliv) {
-      const val = row[deliv.index];
-      const isUnavailable = isNotAvailableValue(val);
-      if (!isUnavailable && val !== "" && val !== null && val !== undefined) {
-        activityMap[deliv.index].completedCount++;
-      }
-    });
-
     // Group breakdowns only include rows assigned to a group listed in Groups.
-    if (!validGroupMap[rowGroup]) continue;
-
-    if (!groupStatsMap[rowGroup]) {
+    const hasListedGroup = Boolean(validGroupMap[rowGroup]);
+    if (hasListedGroup && !groupStatsMap[rowGroup]) {
       groupStatsMap[rowGroup] = {
         totalMembers: 0,
         completedPerDeliv: {},
       };
     }
 
-    const gStat = groupStatsMap[rowGroup];
-    gStat.totalMembers++;
+    const gStat = hasListedGroup ? groupStatsMap[rowGroup] : null;
+    if (gStat) gStat.totalMembers++;
+
     deliverableColumns.forEach(function (deliv) {
       const val = row[deliv.index];
-      if (!isNotAvailableValue(val) && val !== "" && val !== null && val !== undefined) {
+      const isCompleted = !isNotAvailableValue(val) &&
+        val !== "" && val !== null && val !== undefined;
+
+      if (isCompleted) {
+        activityMap[deliv.index].completedCount++;
+      }
+      if (gStat && isCompleted) {
         gStat.completedPerDeliv[deliv.index] = (gStat.completedPerDeliv[deliv.index] || 0) + 1;
       }
     });
