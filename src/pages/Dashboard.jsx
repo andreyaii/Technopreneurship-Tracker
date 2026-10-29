@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   IdCard,
   Users2,
@@ -11,12 +11,7 @@ import {
 } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
-import {
-  getProjectByGroupCode,
-  getGroupMembers,
-  getGroupDeliverables,
-  getGroupSubmissionProgress,
-} from "../services/projectService";
+import { useDashboardData } from "../services/projectService";
 import ProgressCard from "../components/ProgressCard";
 import CourseDeliverables from "../components/CourseDeliverables";
 import StudentCommentsSection from "../components/StudentCommentsSection";
@@ -42,103 +37,19 @@ export default function Dashboard() {
   // are never fetched here. Keep using student.groupCode from AuthContext —
   // never a URL parameter.
   const { student } = useAuth();
-
-  const [project, setProject] = useState(null);
-  const [groupMembers, setGroupMembers] = useState([]);
   const [showGroupMembers, setShowGroupMembers] = useState(false);
-  const [deliverables, setDeliverables] = useState([]);
-  const [overallProgress, setOverallProgress] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [dataErrors, setDataErrors] = useState([]);
-  const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
-    if (!student?.groupCode) return;
+  const {
+    data: dashboardData,
+    isLoading,
+    refetch,
+  } = useDashboardData(student);
 
-    let isCurrent = true;
-
-    async function loadDashboardData() {
-      setIsLoading(true);
-      setDataErrors([]);
-      const hasStudentDeliverables =
-        Array.isArray(student.deliverables) && student.deliverables.length > 0;
-      const needsGroupProgress =
-        !hasStudentDeliverables && typeof student.progress !== "number";
-
-      try {
-        const [
-          projectResult,
-          membersResult,
-          deliverablesResult,
-          progressResult,
-        ] = await Promise.allSettled([
-            getProjectByGroupCode(student.groupCode),
-            getGroupMembers(student.groupCode),
-            hasStudentDeliverables
-              ? Promise.resolve(null)
-              : getGroupDeliverables(student.groupCode),
-            needsGroupProgress
-              ? getGroupSubmissionProgress(student.groupCode)
-              : Promise.resolve(null),
-          ]);
-
-        const errors = [];
-        const projectData =
-          projectResult.status === "fulfilled" ? projectResult.value : null;
-        const members =
-          membersResult.status === "fulfilled" ? membersResult.value : [];
-        const groupDeliverables =
-          deliverablesResult.status === "fulfilled"
-            ? deliverablesResult.value
-            : [];
-        const groupProgress =
-          progressResult.status === "fulfilled"
-            ? progressResult.value
-            : null;
-
-        if (projectResult.status === "rejected") errors.push("project details");
-        if (membersResult.status === "rejected") errors.push("group members");
-        if (!hasStudentDeliverables && deliverablesResult.status === "rejected") {
-          errors.push("deliverables");
-        }
-        if (needsGroupProgress && progressResult.status === "rejected") {
-          errors.push("progress");
-        }
-
-        const userDeliverables = hasStudentDeliverables
-          ? student.deliverables
-          : groupDeliverables;
-
-        const userProgress = hasStudentDeliverables
-          ? Math.round(
-              (student.deliverables.filter(
-                (item) => item.status === "Submitted" || item.isSubmitted === true
-              ).length / student.deliverables.length) * 100
-            )
-          : typeof student.progress === "number"
-            ? student.progress
-            : groupProgress ?? 0;
-
-        if (!isCurrent) return;
-        setProject(projectData);
-        setGroupMembers(members);
-        setShowGroupMembers(false);
-        setDeliverables(userDeliverables);
-        setOverallProgress(userProgress);
-        setDataErrors(errors);
-      } catch (err) {
-        if (!isCurrent) return;
-        setDataErrors([err?.message || "Failed to load dashboard data"]);
-      } finally {
-        if (isCurrent) setIsLoading(false);
-      }
-    }
-
-    loadDashboardData();
-    return () => {
-      isCurrent = false;
-    };
-  }, [student, reloadKey]);
+  const project = dashboardData?.project || null;
+  const groupMembers = dashboardData?.groupMembers || [];
+  const deliverables = dashboardData?.deliverables || [];
+  const overallProgress = dashboardData?.overallProgress || 0;
+  const dataErrors = dashboardData?.dataErrors || [];
 
   if (!student) return null;
 
@@ -180,7 +91,7 @@ export default function Dashboard() {
               </span>
               <button
                 type="button"
-                onClick={() => setReloadKey((key) => key + 1)}
+                onClick={() => refetch()}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-amber-200 hover:bg-amber-100 transition-colors"
               >
                 <RotateCcw className="w-3.5 h-3.5" />

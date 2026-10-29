@@ -26,5 +26,29 @@ export const queryKeys = {
       scope?.subject ?? null,
       "list",
     ],
+    detail: (groupCode) => ["projects", "detail", groupCode ?? null],
+    members: (groupCode) => ["projects", "members", groupCode ?? null],
+    deliverables: (groupCode) => ["projects", "deliverables", groupCode ?? null],
+    progress: (groupCode) => ["projects", "progress", groupCode ?? null],
+    stats: (scope) => ["projects", "stats", scope?.principalId ?? null],
   },
+  dashboard: (groupCode, studentNo) => [
+    "dashboard",
+    groupCode ?? null,
+    studentNo ?? null,
+  ],
+  dashboardStats: (studentId) => [
+    "dashboard",
+    "stats",
+    studentId ?? null,
+  ],
+  comments: {
+    group: (groupCode) => ["comments", "group", groupCode ?? null],
+    individual: (studentNo) => ["comments", "individual", studentNo ?? null],
+  },
+  ratings: (groupCode, studentNo) => [
+    "ratings",
+    groupCode ?? null,
+    studentNo ?? null,
+  ],
 };

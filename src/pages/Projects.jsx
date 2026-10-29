@@ -1,46 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Search, FolderKanban } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { getAllProjects } from "../services/projectService";
+import { useProjects } from "../services/projectService";
+import { getUserQueryScope } from "../queries/queryKeys";
 import ProjectCard from "../components/ProjectCard";
 import { useAuth } from "../context/AuthContext";
 import PaginatedGrid from "../components/PaginatedGrid";
 
 export default function Projects() {
   const { student } = useAuth();
-  const [projects, setProjects] = useState([]);
   const [query, setQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    let isCurrent = true;
-    async function loadProjects() {
-      setIsLoading(true);
-      setLoadError("");
-      try {
-        const data = await getAllProjects();
-        if (isCurrent) {
-          setProjects(data || []);
-        }
-      } catch (err) {
-        console.error("Failed to load projects:", err);
-        if (isCurrent) {
-          setProjects([]);
-          setLoadError(err?.message || "Failed to load projects.");
-        }
-      } finally {
-        if (isCurrent) {
-          setIsLoading(false);
-        }
-      }
-    }
-    loadProjects();
-    return () => {
-      isCurrent = false;
-    };
-  }, [reloadKey]);
+  const scope = useMemo(() => getUserQueryScope(student), [student]);
+  const {
+    data: projects = [],
+    isLoading,
+    error,
+    refetch,
+  } = useProjects(scope);
+  const loadError = error ? (error.message || "Failed to load projects.") : "";
 
   const filtered = useMemo(() => {
     const validProjects = projects.filter(
@@ -88,7 +65,7 @@ export default function Projects() {
           <p className="text-sm text-rose-600">{loadError}</p>
           <button
             type="button"
-            onClick={() => setReloadKey((key) => key + 1)}
+            onClick={() => refetch()}
             className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-surface-border hover:bg-surface-muted transition-colors"
           >
             Retry

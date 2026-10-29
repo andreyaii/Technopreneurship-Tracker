@@ -13,12 +13,17 @@
  * ------------------------------------------------------------------
  */
 
+import { useQuery } from "@tanstack/react-query";
 import {
   studentRequirements,
   requirementDefs,
-} from "../data/mockData";
+} from "../data/mockData.js";
+import { queryClient } from "../queryClient.js";
+import { queryKeys } from "../queries/queryKeys.js";
+import { postAction } from "./api.js";
 
-import { postAction } from "./api";
+export const QUERY_STALE_TIME = 1000 * 60 * 5;
+export const QUERY_GC_TIME = 1000 * 60 * 10;
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -224,6 +229,7 @@ export async function getStudentOverallProgress(studentNo) {
  * Shape: [{ studentNo, name, memberNo }]
  */
 export async function getGroupMembers(groupCode) {
+  if (!groupCode) return [];
   const data = await postAction({ action: "getGroupMembers", groupCode });
   if (!data.success || !Array.isArray(data.data)) {
     throw new Error(data?.message || "Failed to load group members.");
@@ -257,6 +263,7 @@ export async function getProjectMemberCount(groupCode) {
 }
 
 export async function getProjectOverallProgress(groupCode) {
+  if (!groupCode) return 0;
   const data = await postAction({
     action: "getGroupProgress",
     groupCode,
@@ -300,6 +307,7 @@ export async function getProjectRequirementsOverview(groupCode) {
 }
 
 export async function getProjectByGroupCode(groupCode) {
+  if (!groupCode) return undefined;
   const data = await postAction({
     action: "getGroups",
   });
@@ -335,38 +343,33 @@ export async function saveStudentComment(groupCode) {
 }
 
 export async function getAllProjects() {
-  try {
-    const data = await postAction({
-      action: "getGroups",
-    });
+  const data = await postAction({
+    action: "getGroups",
+  });
 
-    if (!data.success) {
-      throw new Error(data.message || "Failed to load groups.");
-    }
-
-    const groups = Array.isArray(data.data) ? data.data : [];
-    return groups
-      .filter(
-        (group) =>
-          typeof group?.groupCode === "string" && group.groupCode.trim().length > 0
-      )
-      .map((group) => {
-        const groupCode = group.groupCode.trim();
-        const title =
-          typeof group.title === "string" && group.title.trim()
-            ? group.title.trim()
-            : "None";
-        const description =
-          typeof group.description === "string" && group.description.trim()
-            ? group.description.trim()
-            : `${groupCode}`;
-
-        return { ...group, groupCode, title, description };
-      });
-  } catch (err) {
-    console.error("getAllProjects error:", err);
-    throw err;
+  if (!data.success) {
+    throw new Error(data.message || "Failed to load groups.");
   }
+
+  const groups = Array.isArray(data.data) ? data.data : [];
+  return groups
+    .filter(
+      (group) =>
+        typeof group?.groupCode === "string" && group.groupCode.trim().length > 0
+    )
+    .map((group) => {
+      const groupCode = group.groupCode.trim();
+      const title =
+        typeof group.title === "string" && group.title.trim()
+          ? group.title.trim()
+          : "None";
+      const description =
+        typeof group.description === "string" && group.description.trim()
+          ? group.description.trim()
+          : `${groupCode}`;
+
+      return { ...group, groupCode, title, description };
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -378,6 +381,7 @@ export async function getAllProjects() {
  * Returns: [{ group, adviser, comment, timestamp }]
  */
 export async function getGroupComments(groupCode) {
+  if (!groupCode) return [];
   const data = await postAction({ action: "getGroupComments", groupCode });
   if (!data.success || !Array.isArray(data.data)) {
     throw new Error(data.message || "Failed to load group comments.");
@@ -404,6 +408,7 @@ export async function addGroupComment(groupCode, adviserName, comment, adviserId
   if (!data.success) {
     throw new Error(data.message || "Failed to save group comment.");
   }
+  queryClient.invalidateQueries({ queryKey: queryKeys.comments.group(groupCode) });
   return data;
 }
 
@@ -419,6 +424,7 @@ export async function addGroupComment(groupCode, adviserName, comment, adviserId
  * @param {string} studentNo
  */
 export async function getIndividualComments(studentNo) {
+  if (!studentNo) return [];
   const data = await postAction({ action: "getIndividualComments", studentNo });
   if (!data.success || !Array.isArray(data.data)) {
     throw new Error(data.message || "Failed to load individual comments.");
@@ -448,6 +454,9 @@ export async function addIndividualComment(student, adviserName, comment, advise
   if (!data.success) {
     throw new Error(data.message || "Failed to save individual comment.");
   }
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.comments.individual(student.studentNo),
+  });
   return data;
 }
 
@@ -463,6 +472,7 @@ export async function addIndividualComment(student, adviserName, comment, advise
  *            individualRating: { rating, adviser, timestamp } | null }
  */
 export async function getRatings(groupCode, studentNo) {
+  if (!groupCode) return { groupRating: null, individualRating: null };
   const data = await postAction({
     action: "getRatings",
     groupCode,
@@ -501,6 +511,9 @@ export async function addRating(targetType, groupCode, studentRecord, adviserNam
   if (!data.success) {
     throw new Error(data.message || "Failed to save rating.");
   }
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.ratings(groupCode, studentRecord?.studentNo || ""),
+  });
   return data;
 }
 
@@ -525,7 +538,7 @@ export async function addRating(targetType, groupCode, studentRecord, adviserNam
  *  - overallCompletionRate: (completed required entries / total required entries) * 100
  *  - activities: list of activities sorted ascending by completion rate (lowest first)
  */
-export async function getAdviserDashboardStats(providedProjects = null) {
+async function computeOrFetchAdviserStats(providedProjects = null) {
   try {
     const response = await postAction(
       { action: "getAdviserDashboardStats" },
@@ -695,4 +708,295 @@ export async function getAdviserDashboardStats(providedProjects = null) {
     totalRequiredEntries: correctedTotalRequired,
     activities,
   };
+}
+
+export async function getAdviserDashboardStats(providedProjects = null) {
+  return computeOrFetchAdviserStats(providedProjects);
+}
+
+// ---------------------------------------------------------------------------
+// Composite Fetchers
+// ---------------------------------------------------------------------------
+
+export async function fetchDashboardData(student) {
+  if (!student) return null;
+  const studentObj =
+    typeof student === "string"
+      ? await getStudentByStudentNo(student)
+      : student;
+
+  if (!studentObj?.groupCode) return null;
+  const hasStudentDeliverables =
+    Array.isArray(studentObj.deliverables) && studentObj.deliverables.length > 0;
+  const needsGroupProgress =
+    !hasStudentDeliverables && typeof studentObj.progress !== "number";
+
+  const [
+    projectResult,
+    membersResult,
+    deliverablesResult,
+    progressResult,
+  ] = await Promise.allSettled([
+    getProjectByGroupCode(studentObj.groupCode),
+    getGroupMembers(studentObj.groupCode),
+    hasStudentDeliverables
+      ? Promise.resolve(null)
+      : getGroupDeliverables(studentObj.groupCode),
+    needsGroupProgress
+      ? getGroupSubmissionProgress(studentObj.groupCode)
+      : Promise.resolve(null),
+  ]);
+
+  const errors = [];
+  const projectData =
+    projectResult.status === "fulfilled" ? projectResult.value : null;
+  const members =
+    membersResult.status === "fulfilled" ? membersResult.value : [];
+  const groupDeliverables =
+    deliverablesResult.status === "fulfilled" ? deliverablesResult.value : [];
+  const groupProgress =
+    progressResult.status === "fulfilled" ? progressResult.value : null;
+
+  if (projectResult.status === "rejected") errors.push("project details");
+  if (membersResult.status === "rejected") errors.push("group members");
+  if (!hasStudentDeliverables && deliverablesResult.status === "rejected") {
+    errors.push("deliverables");
+  }
+  if (needsGroupProgress && progressResult.status === "rejected") {
+    errors.push("progress");
+  }
+
+  const userDeliverables = hasStudentDeliverables
+    ? studentObj.deliverables
+    : groupDeliverables;
+
+  const userProgress = hasStudentDeliverables
+    ? Math.round(
+        (studentObj.deliverables.filter(
+          (item) => item.status === "Submitted" || item.isSubmitted === true
+        ).length / studentObj.deliverables.length) * 100
+      )
+    : typeof studentObj.progress === "number"
+      ? studentObj.progress
+      : groupProgress ?? 0;
+
+  return {
+    project: projectData,
+    groupMembers: members,
+    deliverables: userDeliverables,
+    overallProgress: userProgress,
+    dataErrors: errors,
+  };
+}
+
+export const getDashboardData = fetchDashboardData;
+
+export async function fetchProjectDetails(groupCode, { student, isAdviser } = {}) {
+  const projectData = await getProjectByGroupCode(groupCode);
+  if (!projectData) {
+    return {
+      notFound: true,
+      project: null,
+      memberCount: 0,
+      members: [],
+      deliverables: [],
+      dataErrors: [],
+    };
+  }
+
+  const [membersResult, progressResult, deliverablesResult] =
+    await Promise.allSettled([
+      getGroupMembers(groupCode),
+      getProjectOverallProgress(groupCode),
+      isAdviser
+        ? getGroupDeliverables(groupCode)
+        : Promise.resolve(student?.deliverables || []),
+    ]);
+
+  const errors = [];
+  const projectMembers =
+    membersResult.status === "fulfilled" ? membersResult.value : [];
+  const progress =
+    progressResult.status === "fulfilled" ? progressResult.value : 0;
+  const projectDeliverables =
+    deliverablesResult.status === "fulfilled" ? deliverablesResult.value : [];
+
+  if (membersResult.status === "rejected") errors.push("group members");
+  if (progressResult.status === "rejected") errors.push("project progress");
+  if (deliverablesResult.status === "rejected") errors.push("deliverables");
+
+  return {
+    notFound: false,
+    project: { ...projectData, progress },
+    memberCount: projectMembers.length,
+    members: projectMembers,
+    deliverables: projectDeliverables,
+    dataErrors: errors,
+  };
+}
+
+export const getProjectDetails = fetchProjectDetails;
+
+// ---------------------------------------------------------------------------
+// React Query API Fetching Hooks
+// (staleTime: 5 mins, gcTime: 10 mins)
+// ---------------------------------------------------------------------------
+
+export function useProjects(scope = null, options = {}) {
+  const isEnabled = options.enabled !== undefined ? options.enabled : Boolean(scope);
+  return useQuery({
+    queryKey: queryKeys.projects.list(scope),
+    queryFn: () => getAllProjects(scope),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    ...options,
+    enabled: isEnabled,
+  });
+}
+
+export const useAllProjects = useProjects;
+
+export function useProjectByGroupCode(groupCode, options = {}) {
+  const isEnabled = options.enabled !== undefined ? options.enabled : Boolean(groupCode);
+  return useQuery({
+    queryKey: queryKeys.projects.detail(groupCode),
+    queryFn: () => getProjectByGroupCode(groupCode),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    ...options,
+    enabled: isEnabled,
+  });
+}
+
+export function useGroupMembers(groupCode, options = {}) {
+  const isEnabled = options.enabled !== undefined ? options.enabled : Boolean(groupCode);
+  return useQuery({
+    queryKey: queryKeys.projects.members(groupCode),
+    queryFn: () => getGroupMembers(groupCode),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    ...options,
+    enabled: isEnabled,
+  });
+}
+
+export function useGroupDeliverables(groupCodeInput, options = {}) {
+  const groupCode =
+    typeof groupCodeInput === "object"
+      ? groupCodeInput?.groupCode
+      : groupCodeInput;
+  const isEnabled = options.enabled !== undefined ? options.enabled : Boolean(groupCode);
+  return useQuery({
+    queryKey: queryKeys.projects.deliverables(groupCode),
+    queryFn: () => getGroupDeliverables(groupCode),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    ...options,
+    enabled: isEnabled,
+  });
+}
+
+export function useGroupSubmissionProgress(studentOrGroupCode, options = {}) {
+  const groupCode =
+    typeof studentOrGroupCode === "object"
+      ? studentOrGroupCode?.groupCode
+      : studentOrGroupCode;
+  const isEnabled = options.enabled !== undefined ? options.enabled : Boolean(groupCode);
+  return useQuery({
+    queryKey: queryKeys.projects.progress(groupCode),
+    queryFn: () => getGroupSubmissionProgress(groupCode),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    ...options,
+    enabled: isEnabled,
+  });
+}
+
+export function useProjectOverallProgress(groupCode, options = {}) {
+  const isEnabled = options.enabled !== undefined ? options.enabled : Boolean(groupCode);
+  return useQuery({
+    queryKey: queryKeys.projects.progress(groupCode),
+    queryFn: () => getProjectOverallProgress(groupCode),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    ...options,
+    enabled: isEnabled,
+  });
+}
+
+export function useDashboardData(student, options = {}) {
+  const groupCode = typeof student === "object" ? student?.groupCode : null;
+  const studentId = typeof student === "object" ? (student?.studentNo || student?.studentId) : student;
+  const isEnabled = options.enabled !== undefined ? options.enabled : Boolean(groupCode || studentId);
+  return useQuery({
+    queryKey: queryKeys.dashboard(groupCode, studentId),
+    queryFn: () => fetchDashboardData(student),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    ...options,
+    enabled: isEnabled,
+  });
+}
+
+export function useProjectDetails(groupCode, { student, isAdviser } = {}, options = {}) {
+  const isEnabled = options.enabled !== undefined ? options.enabled : Boolean(groupCode);
+  return useQuery({
+    queryKey: [
+      "projectDetails",
+      groupCode ?? null,
+      Boolean(isAdviser),
+      student?.studentNo ?? null,
+    ],
+    queryFn: () => fetchProjectDetails(groupCode, { student, isAdviser }),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    ...options,
+    enabled: isEnabled,
+  });
+}
+
+export function useAdviserDashboardStats(providedProjects = null, options = {}) {
+  return useQuery({
+    queryKey: queryKeys.projects.stats(),
+    queryFn: () => getAdviserDashboardStats(providedProjects),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    ...options,
+  });
+}
+
+export function useGroupComments(groupCode, options = {}) {
+  const isEnabled = options.enabled !== undefined ? options.enabled : Boolean(groupCode);
+  return useQuery({
+    queryKey: queryKeys.comments.group(groupCode),
+    queryFn: () => getGroupComments(groupCode),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    ...options,
+    enabled: isEnabled,
+  });
+}
+
+export function useIndividualComments(studentNo, options = {}) {
+  const isEnabled = options.enabled !== undefined ? options.enabled : Boolean(studentNo);
+  return useQuery({
+    queryKey: queryKeys.comments.individual(studentNo),
+    queryFn: () => getIndividualComments(studentNo),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    ...options,
+    enabled: isEnabled,
+  });
+}
+
+export function useRatings(groupCode, studentNo, options = {}) {
+  const isEnabled = options.enabled !== undefined ? options.enabled : Boolean(groupCode);
+  return useQuery({
+    queryKey: queryKeys.ratings(groupCode, studentNo),
+    queryFn: () => getRatings(groupCode, studentNo),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    ...options,
+    enabled: isEnabled,
+  });
 }

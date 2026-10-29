@@ -1,14 +1,8 @@
-import { useEffect, useState } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { ArrowLeft, SearchX, RotateCcw } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
-import {
-  getProjectByGroupCode,
-  getGroupMembers,
-  getGroupDeliverables,
-  getProjectOverallProgress,
-} from "../services/projectService";
+import { useProjectDetails } from "../services/projectService";
 import ProjectDetails from "../components/ProjectDetails";
 
 /**
@@ -19,17 +13,6 @@ import ProjectDetails from "../components/ProjectDetails";
 export default function ProjectDetailsPage() {
   const { groupCode } = useParams();
   const { student } = useAuth();
-
-  const [project, setProject] = useState(null);
-  const [memberCount, setMemberCount] = useState(0);
-  const [members, setMembers] = useState([]);
-  const [deliverables, setDeliverables] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-  const [loadError, setLoadError] = useState("");
-  const [dataErrors, setDataErrors] = useState([]);
-  const [reloadKey, setReloadKey] = useState(0);
-
   const isAdviser = student?.role === "adviser";
 
   const isOwnGroup = Boolean(
@@ -37,76 +20,20 @@ export default function ProjectDetailsPage() {
     (student?.groupCode && student.groupCode === groupCode)
   );
 
-  useEffect(() => {
-    if (!isOwnGroup) return;
+  const {
+    data: detailData,
+    isLoading,
+    error,
+    refetch,
+  } = useProjectDetails(groupCode, { student, isAdviser }, { enabled: isOwnGroup });
 
-    let isCurrent = true;
-
-    async function loadDetails() {
-      setIsLoading(true);
-      setNotFound(false);
-      setLoadError("");
-      setDataErrors([]);
-
-      try {
-        const projectData = await getProjectByGroupCode(groupCode);
-
-        if (!isCurrent) return;
-        if (!projectData) {
-          setNotFound(true);
-          return;
-        }
-
-        const [membersResult, progressResult, deliverablesResult] =
-          await Promise.allSettled([
-            getGroupMembers(groupCode),
-            getProjectOverallProgress(groupCode),
-            isAdviser
-              ? getGroupDeliverables(groupCode)
-              : Promise.resolve(student?.deliverables || []),
-          ]);
-
-        if (!isCurrent) return;
-
-        const errors = [];
-        const projectMembers =
-          membersResult.status === "fulfilled" ? membersResult.value : [];
-        const progress =
-          progressResult.status === "fulfilled" ? progressResult.value : 0;
-        const projectDeliverables =
-          deliverablesResult.status === "fulfilled"
-            ? deliverablesResult.value
-            : [];
-
-        if (membersResult.status === "rejected") errors.push("group members");
-        if (progressResult.status === "rejected") errors.push("project progress");
-        if (deliverablesResult.status === "rejected") errors.push("deliverables");
-
-        setProject({ ...projectData, progress });
-        setMemberCount(projectMembers.length);
-        setMembers(projectMembers);
-        setDeliverables(projectDeliverables);
-        setDataErrors(errors);
-      } catch (err) {
-        if (!isCurrent) return;
-        setLoadError(err?.message || "Failed to load project details.");
-      } finally {
-        if (isCurrent) setIsLoading(false);
-      }
-    }
-
-    loadDetails();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [
-    groupCode,
-    isOwnGroup,
-    isAdviser,
-    student?.deliverables,
-    reloadKey,
-  ]);
+  const project = detailData?.project || null;
+  const memberCount = detailData?.memberCount || 0;
+  const members = detailData?.members || [];
+  const deliverables = detailData?.deliverables || [];
+  const notFound = Boolean(detailData?.notFound);
+  const loadError = error ? (error.message || "Failed to load project details.") : "";
+  const dataErrors = detailData?.dataErrors || [];
 
   if (student && !isOwnGroup) {
     return <Navigate to="/projects" replace />;
@@ -147,7 +74,7 @@ export default function ProjectDetailsPage() {
           <p className="text-sm text-rose-600">{loadError}</p>
           <button
             type="button"
-            onClick={() => setReloadKey((key) => key + 1)}
+            onClick={() => refetch()}
             className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-surface-border hover:bg-surface-muted transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />

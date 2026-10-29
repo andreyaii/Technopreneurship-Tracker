@@ -1,6 +1,9 @@
 
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof process !== "undefined" && process.env?.VITE_API_URL) ||
+  "";
 
 if (!API_URL) {
   console.warn(

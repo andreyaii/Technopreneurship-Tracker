@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
 import { Users, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import ProgressBar from "./ProgressBar";
 import { useAuth } from "../context/AuthContext";
-import { getProjectMemberCount } from "../services/projectService";
+import { useGroupMembers } from "../services/projectService";
 
 /**
  * All Projects overview card.
@@ -16,30 +15,20 @@ export default function ProjectCard({ project }) {
   const isAdviser = student?.role === "adviser";
   const groupCode =
     typeof project?.groupCode === "string" ? project.groupCode.trim() : "";
-  const [fetchedMemberCount, setFetchedMemberCount] = useState(null);
-  const [memberCountError, setMemberCountError] = useState(false);
   const hasMemberCount = Number(project?.memberCount) > 0;
+  const {
+    data: members,
+    error: membersError,
+  } = useGroupMembers(groupCode, {
+    enabled: Boolean(groupCode && !hasMemberCount),
+  });
   const memberCount = hasMemberCount
     ? Number(project.memberCount)
-    : fetchedMemberCount;
+    : members
+    ? members.length
+    : null;
+  const memberCountError = Boolean(membersError && !members);
   const progress = project?.progress ?? 0;
-
-  useEffect(() => {
-    if (!groupCode || hasMemberCount) return undefined;
-
-    let isCurrent = true;
-    getProjectMemberCount(groupCode)
-      .then((count) => {
-        if (isCurrent) setFetchedMemberCount(count);
-      })
-      .catch(() => {
-        if (isCurrent) setMemberCountError(true);
-      });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [groupCode, hasMemberCount]);
 
   if (!groupCode) return null;
 

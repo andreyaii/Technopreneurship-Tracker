@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import {
   Users2,
   ShieldCheck,
@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
-import { getAllProjects, getAdviserDashboardStats } from "../services/projectService";
+import { useProjects, useAdviserDashboardStats } from "../services/projectService";
+import { getUserQueryScope } from "../queries/queryKeys";
 import AdviserCommentForm from "../components/AdviserCommentForm";
 import PaginatedGrid from "../components/PaginatedGrid";
 import AdviserStatsCards from "../components/AdviserStatsCards";
@@ -28,56 +29,37 @@ import ActivityCompletionChart from "../components/ActivityCompletionChart";
 export default function AdviserDashboard() {
   const { student: adviser } = useAuth();
 
-  const [projects, setProjects] = useState([]);
-  const [loadingProjects, setLoadingProjects] = useState(true);
-  const [projectsError, setProjectsError] = useState("");
-  const [stats, setStats] = useState(null);
-  const [loadingStats, setLoadingStats] = useState(true);
-  const [statsError, setStatsError] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
-  const loadData = useCallback(async () => {
-    setLoadingProjects(true);
-    setLoadingStats(true);
-    setStatsError(null);
-    setProjectsError("");
+  const scope = useMemo(() => getUserQueryScope(adviser), [adviser]);
+  const {
+    data: projects = [],
+    isLoading: loadingProjects,
+    error: pError,
+    refetch: refetchProjects,
+  } = useProjects(scope);
+  const projectsError = pError ? (pError.message || "Failed to load groups.") : "";
 
-    let loadedProjects = [];
+  const {
+    data: stats = null,
+    isLoading: loadingStats,
+    error: sError,
+    refetch: refetchStats,
+    isRefetching,
+  } = useAdviserDashboardStats();
+  const statsError = sError ? (sError.message || "Failed to load dashboard statistics.") : null;
 
-    // 1. Load projects first so group selector always works independently
+  const isRefreshing = isManualRefreshing || isRefetching;
+
+  const handleRefresh = async () => {
+    setIsManualRefreshing(true);
     try {
-      loadedProjects = await getAllProjects();
-      setProjects(loadedProjects);
-    } catch (err) {
-      console.error("Failed to load projects:", err);
-      setProjects([]);
-      setProjectsError(err?.message || "Failed to load groups.");
+      await Promise.all([refetchProjects(), refetchStats()]);
     } finally {
-      setLoadingProjects(false);
+      setIsManualRefreshing(false);
     }
-
-    // 2. Load statistics using the retrieved projects (avoids duplicate getGroups API call)
-    try {
-      const statsData = await getAdviserDashboardStats(loadedProjects);
-      setStats(statsData);
-    } catch (err) {
-      console.error("Failed to load statistics:", err);
-      setStatsError(err.message || "Failed to load dashboard statistics.");
-    } finally {
-      setLoadingStats(false);
-      setIsRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    loadData();
   };
 
   const filtered = useMemo(() => {
